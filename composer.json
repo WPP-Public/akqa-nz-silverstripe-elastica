@@ -31,7 +31,7 @@
 		"silverstripe/framework": ">=3.1"
 	},
 	"autoload": {
-		"psr-4": { "SilverStripe\\Elastica": "src/" }
+		"psr-0": { "SilverStripe\\Elastica": "src/" }
 	},
 	"extra": {
 		"installer-name": "elastica"
