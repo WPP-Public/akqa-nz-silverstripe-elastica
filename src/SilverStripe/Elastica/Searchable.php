@@ -3,165 +3,241 @@
 namespace SilverStripe\Elastica;
 
 use Elastica\Document;
+use Elastica\Exception\NotFoundException;
 use Elastica\Type\Mapping;
 
 /**
  * Adds elastic search integration to a data object.
  */
-class Searchable extends \DataExtension {
+class Searchable extends \DataExtension
+{
 
-	public static $mappings = array(
-		'Boolean'     => 'boolean',
-		'Decimal'     => 'double',
-		'Double'      => 'double',
-		'Enum'        => 'string',
-		'Float'       => 'float',
-		'HTMLText'    => 'string',
-		'Varchar(255)'=> 'string',
-		'Varchar(50)' => 'string',
-		'HTMLVarchar' => 'string',
-		'Int'         => 'integer',
-		'SS_Datetime' => 'date',
-		'Text'        => 'string',
-		'Varchar'     => 'string',
-		'Year'        => 'integer'
-	);
+    public static $mappings = array(
+        'Boolean' => 'boolean',
+        'Decimal' => 'double',
+        'Double' => 'double',
+        'Enum' => 'string',
+        'Float' => 'float',
+        'HTMLText' => 'string',
+        'Varchar(255)' => 'string',
+        'Varchar(50)' => 'string',
+        'HTMLVarchar' => 'string',
+        'Int' => 'integer',
+        'SS_Datetime' => 'date',
+        'Text' => 'string',
+        'Varchar' => 'string',
+        'Year' => 'integer',
+        'File' => 'attachment'
+    );
 
-	private $service;
+    private $service;
 
-	public function __construct(ElasticaService $service) {
-		$this->service = $service;
-		parent::__construct();
-	}
+    public function __construct(ElasticaService $service, Logger $logger = null)
+    {
+        $this->service = $service;
+        $this->logger = $logger;
+        parent::__construct();
+    }
 
-	/**
-	 * @return string
-	 */
-	public function getElasticaType() {
-		return $this->ownerBaseClass;
-	}
+    /**
+     * @return string
+     */
+    public function getElasticaType()
+    {
+        return $this->ownerBaseClass;
+    }
 
-	/**
-	 * Gets an array of elastic field definitions.
-	 *
-	 * @return array
-	 */
-	public function getElasticaFields() {
-		$db = \DataObject::database_fields(get_class($this->owner));
-		$fields = $this->owner->searchableFields();
-		$result = array();
+    /**
+     * Gets an array of elastic field definitions.
+     * This is also where we set the type of field ($spec['type']) and the analyzer for the field ($spec['analyzer']) if needed.
+     * First we go through all the regular fields belonging to pages, then to the dataobjects related to those pages
+     *
+     * @return array
+     */
+    public function getElasticaFields()
+    {
+        $db = $this->owner->inheritedDatabaseFields();
 
-		foreach ($fields as $name => $params) {
-			$type = null;
-			$spec = array();
+        //get fields details for searchable_fields of pagetype
 
-			if (array_key_exists($name, $db)) {
-				$class = $db[$name];
+        $additionalFields = array();
 
-				if (($pos = strpos($class, '('))) {
-					$class = substr($class, 0, $pos);
-				}
+        if ($this->owner->has_extension('FileExtension')) {
+            $additionalFields = $this->owner->additionalSearchableFields();
+        }
 
-				if (array_key_exists($class, self::$mappings)) {
-					$spec['type'] = self::$mappings[$class];
-				}
-			}
+        $fields = $this->owner->searchableFields() + $additionalFields;
+        $result = array();
 
-			$result[$name] = $spec;
-		}
-		//now loop through DataObject related to $this->owner and get all searchable fields of those DO
-		foreach (array($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many()) as $relationship) {
-			foreach ($relationship as $data_object_ref => $data_object_classname) {
+        foreach ($fields as $name => $params) {
+            $type = null;
+            $spec = array();
 
-				$to_ignore = ['Image', 'WorkflowDefinition', 'SiteTree', 'RateGroup', 'LibraryImage'];
 
-				if (!in_array($data_object_classname, $to_ignore) && $this->owner->$data_object_ref()->first()) {
-					$count = 1;
-					foreach ($this->owner->$data_object_ref() as $dataObject) {
-						$db = \DataObject::database_fields(get_class($dataObject));
-//						var_dump($db);
-//						die();
+            if (array_key_exists($name, $db)) {
+                $class = $db[$name];
 
-						$fields = $dataObject->searchableFields();
+                if (($pos = strpos($class, '('))) {
+                    $class = substr($class, 0, $pos);
+                }
 
-						foreach ($fields as $name => $params) {
-							$type = null;
-							$spec = array();
+                if (array_key_exists($class, self::$mappings)) {
+                    $spec['type'] = self::$mappings[$class];
+                }
+            }
+            elseif ($name == 'FileContent') { //handle File Contents
+                $spec['type'] = 'attachment';
+            }
 
-							if (array_key_exists($name, $db)) {
-								$class = $db[$name];
+            $result[$name] = $spec;
+        }
 
-								if (($pos = strpos($class, '('))) {
-									$class = substr($class, 0, $pos);
-								}
+        //DO to exclude
+        $excludedDataObjects = [
+            'BackLinkTracking' => 0,
+            'LinkTracking' => 1,
+            'Submissions' => 2,
+            'CustomRecipientRules' => 3,
+            'EmailRecipients' => 4,
+            'WorkflowDefinition' => 5,
+            'Parent' => 6,
+            'ViewerGroups' => 7,
+            'EditorGroups' => 8,
+        ];
 
-								if (array_key_exists($class, self::$mappings)) {
-									$spec['type'] = self::$mappings[$class];
-								}
-							}
+        //now loop through DataObjects related to $this->owner and get all searchable fields of those DO
+        foreach (array($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many()) as $relationship) {
+            foreach ($relationship as $data_object_ref => $data_object_classname) {
+                if ($this->owner->$data_object_ref() instanceof \ArrayAccess) {
 
-							$result['_DO_' . $data_object_ref . '_' . $count . '_' . $name] = $spec;
-							$count++;
-						}
-					}
-				}
-			}
-		}
+                    foreach ($this->owner->$data_object_ref() as $dataObject) {
+                        $db = \DataObject::database_fields(get_class($dataObject));
 
-//		var_dump($result);
-//		die();
-		return $result;
-	}
+                        $fields = $dataObject->searchableFields();
 
-	/**
-	 * @return \Elastica\Type\Mapping
-	 */
-	public function getElasticaMapping() {
-		$mapping = new Mapping();
-		$mapping->setProperties($this->getElasticaFields());
+                        foreach ($fields as $name => $params) {
+                            $type = null;
+                            $spec = array();
 
-		return $mapping;
-	}
+                            if (array_key_exists($name, $db)) {
+                                $class = $db[$name];
 
-	public function getElasticaDocument() {
-		$fields = array();
+                                if (($pos = strpos($class, '('))) {
+                                    $class = substr($class, 0, $pos);
+                                }
 
-		foreach ($this->getElasticaFields() as $field => $config) {
-			//handle the DataObjects
-			if (substr($field, 0, 4 ) === "_DO_") {
+                                if (array_key_exists($class, self::$mappings)) {
 
-				$explosion = explode("_", $field);
-				$class = $explosion[2];
-				$dataObjectField = $explosion[4];
+                                    $spec['type'] = self::$mappings[$class];
+                                }
+                            }
+                            if(!array_key_exists($data_object_ref, $excludedDataObjects)) {
+                                $result['DataObject_' . $data_object_ref . '_' . $name] = $spec;
+                            }
+                        }
+                    }
+                }
 
-				$count = 1;
-				foreach ($this->owner->$class() as $dataObjectClass) {
-					$fields['_DO_' . $class . '_' . $count . '_' . $dataObjectField] = $dataObjectClass->$dataObjectField;
-					$count++;
-				}
+            }
+        }
+        $result['LastEdited'] = ['type' => 'date'];
+        return $result;
 
-			}
-			else {
-				$fields[$field] = $this->owner->$field;
-			}
+    }
 
-		}
+    /**
+     * @return \Elastica\Type\Mapping
+     */
+    public function getElasticaMapping()
+    {
+        $mapping = new Mapping();
+        $mapping->setProperties($this->getElasticaFields());
 
-		return new Document($this->owner->ID, $fields);
-	}
+        return $mapping;
+    }
 
-	/**
-	 * Updates the record in the search index.
-	 */
-	public function onAfterWrite() {
-		$this->service->index($this->owner);
-	}
+    /**
+     * Assigns value to the fields indexed from getElasticaFields()
+     *
+     * @return Document
+     */
+    public function getElasticaDocument()
+    {
+        $fields = array();
 
-	/**
-	 * Removes the record from the search index.
-	 */
-	public function onAfterDelete() {
-		$this->service->remove($this->owner);
-	}
+        foreach ($this->getElasticaFields() as $field => $config) {
+            //handle the DataObjects
+            if (substr($field, 0, 11) === "DataObject_") {
+
+                $explosion = explode("_", $field);
+                $class = $explosion[1];
+                $dataObjectField = $explosion[2];
+                $fieldArrayIndex = 'DataObject_' . $class . '_' . $dataObjectField;
+
+                foreach ($this->owner->$class() as $dataObjectClass) {
+
+                    if (!isset($fields[$fieldArrayIndex])) {
+                        $fields[$fieldArrayIndex] = '';
+                    }
+
+                    $fields[$fieldArrayIndex] .= ' ' .$dataObjectClass->$dataObjectField;
+                }
+
+            }
+            elseif ($field == 'FileContent') { //handle files
+                $fields[$field] = base64_encode(file_get_contents($this->owner->getFullPath()));
+            }
+            elseif ($field == 'LastEdited') { //handle Last_Edited field
+                //transform into valid date field according to elastica, otherwise it complains
+
+                if ($this->owner->$field) {
+                    $date = str_replace(' ', 'T', $this->owner->$field);
+
+                    if ($date == '0000-00-00T00:00:00') {
+                        $fields[$field] = date("Y-m-d");
+                    } else {
+                        $fields[$field] = $date;
+                    }
+                }
+            }
+            else { //handle regular fields from PageTypes
+                $fields[$field] = $this->owner->$field;
+            }
+
+        }
+
+        return new Document($this->owner->ID, $fields);
+    }
+
+    /**
+     * Updates the record in the search index.
+     */
+    public function onAfterWrite()
+    {
+
+        if ($this->owner->ShowInSearch) {
+            $this->service->index($this->owner);
+        }
+        else
+        { //remove from index if should not be shown in search
+            try {
+                $this->service->remove($this->owner);
+            } catch (NotFoundException $e) {
+                if ($this->logger) {
+                    $this->logger->log($e->getMessage());
+                }
+            }
+
+
+        }
+    }
+
+    /**
+     * Removes the record from the search index.
+     */
+    public function onAfterDelete()
+    {
+        $this->service->remove($this->owner);
+    }
 
 }

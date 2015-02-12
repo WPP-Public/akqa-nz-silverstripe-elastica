@@ -5,31 +5,34 @@ namespace SilverStripe\Elastica;
 /**
  * Defines and refreshes the elastic search index.
  */
-class ReindexTask extends \BuildTask {
+class ReindexTask extends \BuildTask
+{
 
-	protected $title = 'Elastic Search Reindex';
+    protected $title = 'Elastic Search Reindex';
 
-	protected $description = 'Refreshes the elastic search index';
+    protected $description = 'Refreshes the elastic search index';
 
-	/**
-	 * @var ElasticaService
-	 */
-	private $service;
+    /**
+     * @var ElasticaService
+     */
+    private $service;
 
-	public function __construct(ElasticaService $service) {
-		$this->service = $service;
-	}
+    public function __construct(ElasticaService $service)
+    {
+        $this->service = $service;
+    }
 
-	public function run($request) {
-		$message = function ($content) {
-			print(\Director::is_cli() ? "$content\n" : "<p>$content</p>");
-		};
+    public function run($request)
+    {
+        $message = function ($content) {
+            print(\Director::is_cli() ? "$content\n" : "<p>$content</p>");
+        };
 
-		$message('Defining the mappings');
-		$this->service->define();
+        $message('Defining the mappings');
+        $this->service->define();
 
-		$message('Refreshing the index');
-		$this->service->refresh();
-	}
+        $message('Refreshing the index');
+        $this->service->refresh();
+    }
 
 }
