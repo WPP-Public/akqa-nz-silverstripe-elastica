@@ -12,16 +12,6 @@ use Elastica\Query;
 class ElasticaService
 {
 
-    /**
-     * @var \Elastica\Document[]
-     */
-    protected $buffer = array();
-
-    /**
-     * @var bool controls whether indexing operations are buffered or not
-     */
-    protected $buffered = false;
-
     private $client;
     private $index;
 
@@ -34,7 +24,6 @@ class ElasticaService
         $this->client = $client;
         $this->index = $index;
         $this->logger = $logger;
-        increase_memory_limit_to();
     }
 
     /**
@@ -68,49 +57,18 @@ class ElasticaService
      * Either creates or updates a record in the index.
      *
      * @param Searchable $record
+     * @return \Elastica\Response
      */
     public function index($record)
     {
         $document = $record->getElasticaDocument();
         $type = $record->getElasticaType();
-
-        if ($this->buffered) {
-            if (array_key_exists($type, $this->buffer)) {
-                $this->buffer[$type][] = $document;
-            } else {
-                $this->buffer[$type] = array($document);
-            }
-        } else {
-            $index = $this->getIndex();
-
-            $index->getType($type)->addDocument($document);
-            $index->refresh();
-        }
-    }
-
-    /**
-     * Begins a bulk indexing operation where documents are buffered rather than
-     * indexed immediately.
-     */
-    public function startBulkIndex()
-    {
-        $this->buffered = true;
-    }
-
-    /**
-     * Ends the current bulk index operation and indexes the buffered documents.
-     */
-    public function endBulkIndex()
-    {
         $index = $this->getIndex();
 
-        foreach ($this->buffer as $type => $documents) {
-            $index->getType($type)->addDocuments($documents);
-            $index->refresh();
-        }
+        $response = $index->getType($type)->addDocument($document);
+        $index->refresh();
 
-        $this->buffered = false;
-        $this->buffer = array();
+        return $response;
     }
 
     /**
@@ -118,12 +76,19 @@ class ElasticaService
      *
      * @param Searchable $record
      */
+
+    /**
+     * Deletes a record from the index.
+     *
+     * @param Searchable $record
+     * @return \Elastica\Response
+     */
     public function remove($record)
     {
         $index = $this->getIndex();
         $type = $index->getType($record->getElasticaType());
 
-        $type->deleteDocument($record->getElasticaDocument());
+        return $type->deleteDocument($record->getElasticaDocument());
     }
 
     /**
@@ -152,12 +117,8 @@ class ElasticaService
      */
     public function refresh()
     {
-        $index = $this->getIndex();
-        $this->startBulkIndex();
-
         foreach ($this->getIndexedClasses() as $class) {
             foreach ($class::get() as $record) {
-
 
                 if ($record->ShowInSearch) {
                     $this->index($record);
@@ -166,22 +127,19 @@ class ElasticaService
                     print "<strong>Attempting to remove: </strong> " . $record->getTitle() . "<br>\n";
 
                     try {
-                        $this->remove($record);
+                        $this->remove($record)->getData();
                         print "<strong>REMOVED: </strong> " . $record->getTitle() . "<br>\n";
                     } catch (NotFoundException $e) {
+                        $message = $e->getMessage();
                         if ($this->logger) {
-                            $this->logger->log($e->getMessage());
+                            $this->logger->log($message);
                         }
 
-                        print "<strong>NOT INDEXED: </strong> " . $record->getTitle() . "<br>\n";
+                        print "<strong>NOT INDEXED: </strong> " . $record->getTitle() . "- $message <br>\n";
                     }
-
-
                 }
             }
         }
-
-        $this->endBulkIndex();
     }
 
     /**
