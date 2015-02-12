@@ -1,8 +1,8 @@
 {
-	"name": "silverstripe-australia/elastica",
+	"name": "heyday/silverstripe-elastica",
 	"description": "Provides Elastic Search integration for SilverStripe DataObjects using Elastica",
 	"type": "silverstripe-module",
-	"homepage": "http://github.com/ajshort/silverstripe-elastica",
+	"homepage": "http://github.com/heyday/silverstripe-elastica",
 	"keywords": ["silverstripe", "search", "elasticsearch", "elastica"],
 	"license": "BSD-3-Clause",
 	"authors": [
@@ -13,22 +13,27 @@
 		{
 			"name": "Marcus Nyeholt",
 			"email": "marcus@silverstripe.com.au"
+		},
+		{
+			"name": "Glenn Bautista",
+			"email": "glenn@heyday.co.nz"
+		},
+		{
+			"name": "Ben Dubuisson",
+			"email": "ben.dubuisson@heyday.co.nz"
 		}
 	],
 	"support": {
-		"issues": "http://github.com/ajshort/silverstripe-elastica/issues"
+		"issues": "http://github.com/heyday/silverstripe-elastica/issues"
 	},
 	"require": {
-		"ruflin/elastica": "dev-master",
+		"ruflin/elastica": "v1.4.2.*",
 		"silverstripe/framework": ">=3.1"
 	},
 	"autoload": {
-		"psr-0": { "SilverStripe\\Elastica": "src/" }
+		"psr-4": { "SilverStripe\\Elastica": "src/" }
 	},
 	"extra": {
 		"installer-name": "elastica"
-	},
-	"replace": {
-		"ajshort/silverstripe-elastica": "self.version"
 	}
 }
