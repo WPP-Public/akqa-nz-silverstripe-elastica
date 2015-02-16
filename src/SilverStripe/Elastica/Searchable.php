@@ -3,7 +3,6 @@
 namespace SilverStripe\Elastica;
 
 use Elastica\Document;
-use Elastica\Exception\NotFoundException;
 use Elastica\Type\Mapping;
 
 /**
@@ -12,6 +11,10 @@ use Elastica\Type\Mapping;
 class Searchable extends \DataExtension
 {
 
+    /**
+     * @config
+     * @var array
+     */
     public static $mappings = array(
         'Boolean' => 'boolean',
         'Decimal' => 'double',
@@ -30,6 +33,12 @@ class Searchable extends \DataExtension
         'File' => 'attachment'
     );
 
+    /**
+     * @config
+     * @var array
+     */
+    private static $exclude_relations = array();
+
     private $service;
 
     public function __construct(ElasticaService $service, Logger $logger = null)
@@ -37,6 +46,11 @@ class Searchable extends \DataExtension
         $this->service = $service;
         $this->logger = $logger;
         parent::__construct();
+    }
+
+    public function getExcludedRelations()
+    {
+        return \Config::inst()->forClass(get_called_class())->excluded_relations;
     }
 
     /**
@@ -56,7 +70,18 @@ class Searchable extends \DataExtension
      */
     public function getElasticaFields()
     {
-        $db = $this->owner->inheritedDatabaseFields();
+        $result = $this->getSearchableFields(array());
+
+        return $this->getReferenceSearchableFields($result);
+    }
+
+    /**
+     * Get the searchable fields for the owner data object
+     * @return array
+     */
+    protected function getSearchableFields(array $result)
+    {
+        $fields = $this->owner->inheritedDatabaseFields();
 
         //get fields details for searchable_fields of pagetype
 
@@ -66,16 +91,17 @@ class Searchable extends \DataExtension
             $additionalFields = $this->owner->additionalSearchableFields();
         }
 
-        $fields = $this->owner->searchableFields() + $additionalFields;
-        $result = array();
+        $searchableFields = $this->owner->searchableFields() + $additionalFields;
 
-        foreach ($fields as $name => $params) {
+        foreach ($searchableFields as $name => $params) {
             $type = null;
-            $spec = array();
+            $spec = array(
+                'IsReference' => false
+            );
 
 
-            if (array_key_exists($name, $db)) {
-                $class = $db[$name];
+            if (array_key_exists($name, $fields)) {
+                $class = $fields[$name];
 
                 if (($pos = strpos($class, '('))) {
                     $class = substr($class, 0, $pos);
@@ -84,65 +110,60 @@ class Searchable extends \DataExtension
                 if (array_key_exists($class, self::$mappings)) {
                     $spec['type'] = self::$mappings[$class];
                 }
-            }
-            elseif ($name == 'FileContent') { //handle File Contents
+            } elseif ($name == 'FileContent') { //handle File Contents
                 $spec['type'] = 'attachment';
             }
 
             $result[$name] = $spec;
         }
 
-        //DO to exclude
-        $excludedDataObjects = [
-            'BackLinkTracking' => 0,
-            'LinkTracking' => 1,
-            'Submissions' => 2,
-            'CustomRecipientRules' => 3,
-            'EmailRecipients' => 4,
-            'WorkflowDefinition' => 5,
-            'Parent' => 6,
-            'ViewerGroups' => 7,
-            'EditorGroups' => 8,
-        ];
+        return $result;
+    }
 
+
+    /**
+     * @param array $result
+     * @return array
+     */
+    protected function getReferenceSearchableFields(array $result)
+    {
         //now loop through DataObjects related to $this->owner and get all searchable fields of those DO
         foreach (array($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many()) as $relationship) {
-            foreach ($relationship as $data_object_ref => $data_object_classname) {
-                if ($this->owner->$data_object_ref() instanceof \ArrayAccess) {
+            foreach ($relationship as $reference => $className) {
+                if ($this->owner->$reference() instanceof \ArrayAccess && !in_array($reference, $this->getExcludedRelations())) {
 
-                    foreach ($this->owner->$data_object_ref() as $dataObject) {
-                        $db = \DataObject::database_fields(get_class($dataObject));
+                    foreach ($this->owner->$reference() as $dataObject) {
+                        $fields = \DataObject::database_fields(get_class($dataObject));
 
-                        $fields = $dataObject->searchableFields();
+                        $searchableFields = $dataObject->searchableFields();
 
-                        foreach ($fields as $name => $params) {
-                            $type = null;
-                            $spec = array();
+                        foreach ($searchableFields as $fieldName => $params) {
 
-                            if (array_key_exists($name, $db)) {
-                                $class = $db[$name];
 
-                                if (($pos = strpos($class, '('))) {
-                                    $class = substr($class, 0, $pos);
+                            if (array_key_exists($fieldName, $fields)) {
+                                $dataType = $fields[$fieldName];
+
+                                if (($pos = strpos($dataType, '('))) {
+                                    $dataType = substr($dataType, 0, $pos);
                                 }
 
-                                if (array_key_exists($class, self::$mappings)) {
+                                if (array_key_exists($dataType, self::$mappings)) {
 
-                                    $spec['type'] = self::$mappings[$class];
+                                    $result[$reference . '_' . $fieldName] = array(
+                                        'IsReference' => true,
+                                        'Type' => self::$mappings[$dataType],
+                                        'ReferenceName' => $reference,
+                                        'FieldName' => $fieldName
+                                    );
                                 }
-                            }
-                            if(!array_key_exists($data_object_ref, $excludedDataObjects)) {
-                                $result['DataObject_' . $data_object_ref . '_' . $name] = $spec;
                             }
                         }
                     }
                 }
-
             }
         }
-        $result['LastEdited'] = ['type' => 'date'];
-        return $result;
 
+        return $result;
     }
 
     /**
@@ -166,42 +187,41 @@ class Searchable extends \DataExtension
         $fields = array();
 
         foreach ($this->getElasticaFields() as $field => $config) {
-            //handle the DataObjects
-            if (substr($field, 0, 11) === "DataObject_") {
 
-                $explosion = explode("_", $field);
-                $class = $explosion[1];
-                $dataObjectField = $explosion[2];
-                $fieldArrayIndex = 'DataObject_' . $class . '_' . $dataObjectField;
+            // Handle Referenced DataObjects
+            if (isset($config['IsReference']) && $config['IsReference']) {
 
-                foreach ($this->owner->$class() as $dataObjectClass) {
+                $referenceName = $config['ReferenceName'];
+                $fieldName = $config['FieldName'];
+                $index = $referenceName . '_' . $fieldName;
 
-                    if (!isset($fields[$fieldArrayIndex])) {
-                        $fields[$fieldArrayIndex] = '';
+                foreach ($this->owner->$referenceName() as $dataObject) {
+
+                    if (!isset($fields[$index])) {
+                        $fields[$index] = '';
                     }
 
-                    $fields[$fieldArrayIndex] .= ' ' .$dataObjectClass->$dataObjectField;
+                    $fields[$index] .= ' ' . $dataObject->$fieldName;
                 }
+            } else {
 
-            }
-            elseif ($field == 'FileContent') { //handle files
-                $fields[$field] = base64_encode(file_get_contents($this->owner->getFullPath()));
-            }
-            elseif ($field == 'LastEdited') { //handle Last_Edited field
-                //transform into valid date field according to elastica, otherwise it complains
+                if ($field == 'FileContent') { //handle files
+                    $fields[$field] = base64_encode(file_get_contents($this->owner->getFullPath()));
+                } elseif ($field == 'LastEdited') { //handle Last_Edited field
+                    //transform into valid date field according to elastica, otherwise it complains
 
-                if ($this->owner->$field) {
-                    $date = str_replace(' ', 'T', $this->owner->$field);
+                    if ($this->owner->$field) {
+                        $date = str_replace(' ', 'T', $this->owner->$field);
 
-                    if ($date == '0000-00-00T00:00:00') {
-                        $fields[$field] = date("Y-m-d");
-                    } else {
-                        $fields[$field] = $date;
+                        if ($date == '0000-00-00T00:00:00') {
+                            $fields[$field] = date("Y-m-d");
+                        } else {
+                            $fields[$field] = $date;
+                        }
                     }
+                } else { //handle regular fields from PageTypes
+                    $fields[$field] = $this->owner->$field;
                 }
-            }
-            else { //handle regular fields from PageTypes
-                $fields[$field] = $this->owner->$field;
             }
 
         }
@@ -210,25 +230,15 @@ class Searchable extends \DataExtension
     }
 
     /**
-     * Updates the record in the search index.
+     * Updates the record in the search index, or removes it as necessary.
      */
     public function onAfterWrite()
     {
 
         if ($this->owner->ShowInSearch) {
             $this->service->index($this->owner);
-        }
-        else
-        { //remove from index if should not be shown in search
-            try {
-                $this->service->remove($this->owner);
-            } catch (NotFoundException $e) {
-                if ($this->logger) {
-                    $this->logger->log($e->getMessage());
-                }
-            }
-
-
+        } else {
+            $this->service->remove($this->owner);
         }
     }
 

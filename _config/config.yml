@@ -1,0 +1,10 @@
+---
+Name: search
+After: 'framework/*','cms/*'
+---
+
+SilverStripe\Elastica\Searchable:
+  excluded_relations:
+    - BackLinkTracking
+    - LinkTracking
+    - Parent
