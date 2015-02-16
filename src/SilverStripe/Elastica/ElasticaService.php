@@ -61,34 +61,51 @@ class ElasticaService
      */
     public function index($record)
     {
-        $document = $record->getElasticaDocument();
-        $type = $record->getElasticaType();
-        $index = $this->getIndex();
+        try {
 
-        $response = $index->getType($type)->addDocument($document);
-        $index->refresh();
+            $document = $record->getElasticaDocument();
+            $type = $record->getElasticaType();
+            $index = $this->getIndex();
 
-        return $response;
+            $response = $index->getType($type)->addDocument($document);
+            $index->refresh();
+
+            return $response;
+
+        } catch (\Exception $e) {
+
+            if ($this->logger) {
+                $this->logger->log($e->getMessage());
+            }
+
+        }
     }
 
     /**
-     * Deletes a record from the index.
-     *
-     * @param Searchable $record
-     */
-
-    /**
-     * Deletes a record from the index.
-     *
      * @param Searchable $record
      * @return \Elastica\Response
+     * @throws NotFoundException
      */
     public function remove($record)
     {
-        $index = $this->getIndex();
-        $type = $index->getType($record->getElasticaType());
+        try {
 
-        return $type->deleteDocument($record->getElasticaDocument());
+            $index = $this->getIndex();
+            $type = $index->getType($record->getElasticaType());
+
+            return $type->deleteDocument($record->getElasticaDocument());
+
+        } catch (\Exception $e) {
+
+            if ($this->logger) {
+                $this->logger->log($e->getMessage());
+            }
+
+            if ($e instanceof NotFoundException) {
+                throw $e;
+            }
+
+        }
     }
 
     /**
@@ -130,12 +147,7 @@ class ElasticaService
                         $this->remove($record)->getData();
                         print "<strong>REMOVED: </strong> " . $record->getTitle() . "<br>\n";
                     } catch (NotFoundException $e) {
-                        $message = $e->getMessage();
-                        if ($this->logger) {
-                            $this->logger->log($message);
-                        }
-
-                        print "<strong>NOT INDEXED: </strong> " . $record->getTitle() . "- $message <br>\n";
+                        print "<strong>NOT INDEXED: </strong> " . $record->getTitle() . "- {$e->getMessage()} <br>\n";
                     }
                 }
             }
