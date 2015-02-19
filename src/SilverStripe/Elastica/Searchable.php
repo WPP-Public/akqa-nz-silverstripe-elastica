@@ -4,6 +4,7 @@ namespace SilverStripe\Elastica;
 
 use Elastica\Document;
 use Elastica\Type\Mapping;
+use SilverStripe\Elastica\Interfaces\ElasticSearchFieldsInterface;
 
 /**
  * Adds elastic search integration to a data object.
@@ -83,25 +84,14 @@ class Searchable extends \DataExtension
     {
         $fields = $this->owner->inheritedDatabaseFields();
 
-        //get fields details for searchable_fields of pagetype
-
-        $additionalFields = array();
-
-        if ($this->owner->has_extension('FileExtension')) {
-            $additionalFields = $this->owner->additionalSearchableFields();
-        }
-
-        $searchableFields = $this->owner->searchableFields() + $additionalFields;
-
-        foreach ($searchableFields as $name => $params) {
+        foreach ($this->getUnprocessedSearchableFields($this->owner) as $fieldName => $params) {
             $type = null;
             $spec = array(
                 'IsReference' => false
             );
 
-
-            if (array_key_exists($name, $fields)) {
-                $class = $fields[$name];
+            if (array_key_exists($fieldName, $fields)) {
+                $class = $fields[$fieldName];
 
                 if (($pos = strpos($class, '('))) {
                     $class = substr($class, 0, $pos);
@@ -110,11 +100,11 @@ class Searchable extends \DataExtension
                 if (array_key_exists($class, self::$mappings)) {
                     $spec['type'] = self::$mappings[$class];
                 }
-            } elseif ($name == 'FileContent') { //handle File Contents
-                $spec['type'] = 'attachment';
+            } else { //handle File Contents
+                $spec['type'] = $params;
             }
 
-            $result[$name] = $spec;
+            $result[$fieldName] = $spec;
         }
 
         return $result;
@@ -135,10 +125,7 @@ class Searchable extends \DataExtension
                     foreach ($this->owner->$reference() as $dataObject) {
                         $fields = \DataObject::database_fields(get_class($dataObject));
 
-                        $searchableFields = $dataObject->searchableFields();
-
-                        foreach ($searchableFields as $fieldName => $params) {
-
+                        foreach ($this->getUnprocessedSearchableFields($dataObject) as $fieldName => $params) {
 
                             if (array_key_exists($fieldName, $fields)) {
                                 $dataType = $fields[$fieldName];
@@ -151,7 +138,14 @@ class Searchable extends \DataExtension
 
                                     $result[$reference . '_' . $fieldName] = array(
                                         'IsReference' => true,
-                                        'Type' => self::$mappings[$dataType],
+                                        'type' => self::$mappings[$dataType],
+                                        'ReferenceName' => $reference,
+                                        'FieldName' => $fieldName
+                                    );
+                                } else {
+                                    $result[$reference . '_' . $fieldName] = array(
+                                        'IsReference' => true,
+                                        'type' => $params,
                                         'ReferenceName' => $reference,
                                         'FieldName' => $fieldName
                                     );
@@ -164,6 +158,20 @@ class Searchable extends \DataExtension
         }
 
         return $result;
+    }
+
+    /**
+     * Get all the eligible searchable fields from the dataobject
+     * @param \DataObject $dataObject
+     * @return array
+     */
+    protected function getUnprocessedSearchableFields(\DataObject $dataObject)
+    {
+        if ($dataObject instanceof ElasticSearchFieldsInterface) {
+            return $dataObject->searchableFields() + $dataObject->elasticSearchFields();
+        }
+
+        return $dataObject->searchableFields();
     }
 
     /**

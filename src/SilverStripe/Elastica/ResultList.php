@@ -26,6 +26,24 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
     }
 
     /**
+     * Get array of IDs of the results
+     * @return array
+     */
+    public function getIDs()
+    {
+        /** @var $found \Elastica\Result[] */
+        $found = $this->getResults();
+
+        $ids = array();
+
+        foreach ($found as $item) {
+            $ids[] = $item->getId();
+        }
+
+        return $ids;
+    }
+
+    /**
      * @return \Elastica\Index
      */
     public function getIndex()
