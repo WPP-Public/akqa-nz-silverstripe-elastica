@@ -101,7 +101,7 @@ class Searchable extends \DataExtension
                     $spec['type'] = self::$mappings[$class];
                 }
             } else { //handle File Contents
-                $spec['type'] = $params;
+                $spec = array_merge($spec, $params);
             }
 
             $result[$fieldName] = $spec;
@@ -143,12 +143,11 @@ class Searchable extends \DataExtension
                                         'FieldName' => $fieldName
                                     );
                                 } else {
-                                    $result[$reference . '_' . $fieldName] = array(
+                                    $result[$reference . '_' . $fieldName] = array_merge(array(
                                         'IsReference' => true,
-                                        'type' => $params,
                                         'ReferenceName' => $reference,
                                         'FieldName' => $fieldName
-                                    );
+                                    ), $params);
                                 }
                             }
                         }

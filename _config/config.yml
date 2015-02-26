@@ -1,6 +1,6 @@
 ---
 Name: search
-After: 'framework/*','cms/*'
+After: 'silvertripe-elastica/*'
 ---
 
 SilverStripe\Elastica\Searchable:
