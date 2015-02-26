@@ -23,8 +23,6 @@ class Searchable extends \DataExtension
         'Enum' => 'string',
         'Float' => 'float',
         'HTMLText' => 'string',
-        'Varchar(255)' => 'string',
-        'Varchar(50)' => 'string',
         'HTMLVarchar' => 'string',
         'Int' => 'integer',
         'SS_Datetime' => 'date',
@@ -59,7 +57,7 @@ class Searchable extends \DataExtension
      */
     public function getElasticaType()
     {
-        return $this->ownerBaseClass;
+        return get_class($this->owner);
     }
 
     /**
@@ -91,14 +89,10 @@ class Searchable extends \DataExtension
             );
 
             if (array_key_exists($fieldName, $fields)) {
-                $class = $fields[$fieldName];
+                $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
 
-                if (($pos = strpos($class, '('))) {
-                    $class = substr($class, 0, $pos);
-                }
-
-                if (array_key_exists($class, self::$mappings)) {
-                    $spec['type'] = self::$mappings[$class];
+                if (array_key_exists($dataType, self::$mappings)) {
+                    $spec['type'] = self::$mappings[$dataType];
                 }
             } else { //handle File Contents
                 $spec = array_merge($spec, $params);
@@ -128,11 +122,7 @@ class Searchable extends \DataExtension
                         foreach ($this->getUnprocessedSearchableFields($dataObject) as $fieldName => $params) {
 
                             if (array_key_exists($fieldName, $fields)) {
-                                $dataType = $fields[$fieldName];
-
-                                if (($pos = strpos($dataType, '('))) {
-                                    $dataType = substr($dataType, 0, $pos);
-                                }
+                                $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
 
                                 if (array_key_exists($dataType, self::$mappings)) {
 
@@ -157,6 +147,15 @@ class Searchable extends \DataExtension
         }
 
         return $result;
+    }
+
+    protected function stripDataTypeParameters($dataType)
+    {
+        if (($pos = strpos($dataType, '('))) {
+            $dataType = substr($dataType, 0, $pos);
+        }
+
+        return $dataType;
     }
 
     /**

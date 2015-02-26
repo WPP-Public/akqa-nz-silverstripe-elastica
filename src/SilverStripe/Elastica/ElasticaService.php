@@ -5,6 +5,7 @@ namespace SilverStripe\Elastica;
 use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
+use Psr\Log\LoggerInterface;
 
 /**
  * A service used to interact with elastic search.
@@ -12,14 +13,27 @@ use Elastica\Query;
 class ElasticaService
 {
 
+    /**
+     * @var Client
+     */
     private $client;
+
+    /**
+     * @var string
+     */
     private $index;
 
     /**
-     * @param \Elastica\Client $client
-     * @param string $index
+     * @var LoggerInterface
      */
-    public function __construct(Client $client, $index, Logger $logger = null)
+    private $logger;
+
+    /**
+     * @param Client $client
+     * @param $index
+     * @param LoggerInterface $logger
+     */
+    public function __construct(Client $client, $index, LoggerInterface $logger = null)
     {
         $this->client = $client;
         $this->index = $index;
@@ -50,7 +64,7 @@ class ElasticaService
      */
     public function search($query)
     {
-        return new ResultList($this->getIndex(), Query::create($query));
+        return new ResultList($this->getIndex(), Query::create($query), $this->logger);
     }
 
     /**
@@ -75,7 +89,7 @@ class ElasticaService
         } catch (\Exception $e) {
 
             if ($this->logger) {
-                $this->logger->log($e->getMessage());
+                $this->logger->warning($e->getMessage());
             }
 
         }
@@ -98,7 +112,7 @@ class ElasticaService
         } catch (\Exception $e) {
 
             if ($this->logger) {
-                $this->logger->log($e->getMessage());
+                $this->logger->warning($e->getMessage());
             }
 
             if ($e instanceof NotFoundException) {

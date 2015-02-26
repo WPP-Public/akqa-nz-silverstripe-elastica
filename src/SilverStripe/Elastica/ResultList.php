@@ -4,6 +4,7 @@ namespace SilverStripe\Elastica;
 
 use Elastica\Index;
 use Elastica\Query;
+use Psr\Log\LoggerInterface;
 
 /**
  * A list wrapper around the results from a query. Note that not all operations are implemented.
@@ -13,11 +14,13 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
 
     private $index;
     private $query;
+    private $logger;
 
-    public function __construct(Index $index, Query $query)
+    public function __construct(Index $index, Query $query, LoggerInterface $logger = null)
     {
         $this->index = $index;
         $this->query = $query;
+        $this->logger = $logger;
     }
 
     public function __clone()
@@ -64,7 +67,14 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
      */
     public function getResults()
     {
-        return $this->index->search($this->query)->getResults();
+        $results = [];
+        try {
+            $results = $this->index->search($this->query)->getResults();
+        } catch (\Exception $e) {
+            if ($this->logger->critical($e->getMessage()));
+        }
+
+        return $results;
     }
 
     public function getIterator()
