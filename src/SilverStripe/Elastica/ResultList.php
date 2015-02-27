@@ -71,7 +71,9 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
         try {
             $results = $this->index->search($this->query)->getResults();
         } catch (\Exception $e) {
-            if ($this->logger->critical($e->getMessage()));
+            if ($this->logger) {
+                $this->logger->critical($e->getMessage());
+            }
         }
 
         return $results;
