@@ -6,6 +6,7 @@ use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
 use Psr\Log\LoggerInterface;
+use SilverStripe\Elastica\Interfaces\ElasticSearchFieldsInterface;
 
 /**
  * A service used to interact with elastic search.
@@ -21,7 +22,7 @@ class ElasticaService
     /**
      * @var string
      */
-    private $index;
+    private $indexName;
 
     /**
      * @var LoggerInterface
@@ -30,13 +31,13 @@ class ElasticaService
 
     /**
      * @param Client $client
-     * @param $index
+     * @param string $indexName
      * @param LoggerInterface $logger
      */
-    public function __construct(Client $client, $index, LoggerInterface $logger = null)
+    public function __construct(Client $client, $indexName, LoggerInterface $logger = null)
     {
         $this->client = $client;
-        $this->index = $index;
+        $this->indexName = $indexName;
         $this->logger = $logger;
     }
 
@@ -53,7 +54,7 @@ class ElasticaService
      */
     public function getIndex()
     {
-        return $this->getClient()->getIndex($this->index);
+        return $this->getClient()->getIndex($this->indexName);
     }
 
     /**
@@ -151,7 +152,11 @@ class ElasticaService
         foreach ($this->getIndexedClasses() as $class) {
             foreach ($class::get() as $record) {
 
-                if ($record->ShowInSearch) {
+                //Only index records with Show In Search enabled for Site Tree descendants
+                //otherwise index all other data objects
+                if (($record instanceof \SiteTree && $record->ShowInSearch) ||
+                    (!$record instanceof \SiteTree && $record instanceof \DataObject )
+                ) {
                     $this->index($record);
                     print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
                 } else {
@@ -178,7 +183,10 @@ class ElasticaService
         $classes = array();
 
         foreach (\ClassInfo::subclassesFor('DataObject') as $candidate) {
-            if (singleton($candidate)->hasExtension('SilverStripe\\Elastica\\Searchable')) {
+            $candidateInstance = singleton($candidate);
+            if ($candidateInstance->hasExtension('SilverStripe\\Elastica\\Searchable')
+                && $candidateInstance instanceof ElasticSearchFieldsInterface
+            ) {
                 $classes[] = $candidate;
             }
         }

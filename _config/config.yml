@@ -1,10 +1,7 @@
----
-Name: search
-After: 'silvertripe-elastica/*'
----
-
-SilverStripe\Elastica\Searchable:
-  excluded_relations:
-    - BackLinkTracking
-    - LinkTracking
-    - Parent
+Injector:
+  SilverStripe\Elastica\ReindexTask:
+    constructor:
+      - %$SilverStripe\Elastica\ElasticaService
+  SilverStripe\Elastica\Searchable:
+    constructor:
+      - %$SilverStripe\Elastica\ElasticaService

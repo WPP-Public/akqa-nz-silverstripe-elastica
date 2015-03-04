@@ -29,7 +29,8 @@ class Searchable extends \DataExtension
         'Text' => 'string',
         'Varchar' => 'string',
         'Year' => 'integer',
-        'File' => 'attachment'
+        'File' => 'attachment',
+        'Date' => 'date'
     );
 
     /**
@@ -69,77 +70,101 @@ class Searchable extends \DataExtension
      */
     public function getElasticaFields()
     {
-        $result = $this->getSearchableFields(array());
-
-        return $this->getReferenceSearchableFields($result);
+        return array_merge($this->getSearchableFields(), $this->getReferenceSearchableFields());
     }
 
     /**
      * Get the searchable fields for the owner data object
      * @return array
      */
-    protected function getSearchableFields(array $result)
+    protected function getSearchableFields()
     {
-        $fields = $this->owner->inheritedDatabaseFields();
+        $result = array();
 
-        foreach ($this->getUnprocessedSearchableFields($this->owner) as $fieldName => $params) {
-            $type = null;
-            $spec = array(
-                'IsReference' => false
-            );
+        if ($this->owner instanceof ElasticSearchFieldsInterface) {
 
-            if (array_key_exists($fieldName, $fields)) {
-                $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
+            $fields = $this->owner->inheritedDatabaseFields();
 
-                if (array_key_exists($dataType, self::$mappings)) {
-                    $spec['type'] = self::$mappings[$dataType];
+            foreach ($this->owner->elasticSearchFields() as $fieldName => $params) {
+
+                if (isset($params['type'])) {
+
+                    $result[$fieldName] = $params;
+
+                } else {
+
+                    $fieldName = $params;
+
+                    if (array_key_exists($fieldName, $fields)) {
+
+                        $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
+
+                        if (array_key_exists($dataType, self::$mappings)) {
+                            $spec['type'] = self::$mappings[$dataType];
+
+                            $result[$fieldName] = array('type' => self::$mappings[$dataType]);
+                        }
+                    }
                 }
-            } else { //handle File Contents
-                $spec = array_merge($spec, $params);
-            }
 
-            $result[$fieldName] = $spec;
+            }
         }
 
         return $result;
     }
 
-
     /**
-     * @param array $result
      * @return array
      */
-    protected function getReferenceSearchableFields(array $result)
+    protected function getReferenceSearchableFields()
     {
-        //now loop through DataObjects related to $this->owner and get all searchable fields of those DO
-        foreach (array($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many()) as $relationship) {
-            foreach ($relationship as $reference => $className) {
-                if ($this->owner->$reference() instanceof \ArrayAccess && !in_array($reference, $this->getExcludedRelations())) {
+        $result = array();
 
-                    foreach ($this->owner->$reference() as $dataObject) {
-                        $fields = \DataObject::database_fields(get_class($dataObject));
+        if ($this->owner instanceof ElasticSearchFieldsInterface) {
 
-                        foreach ($this->getUnprocessedSearchableFields($dataObject) as $fieldName => $params) {
+            $relations = array_merge($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many());
 
-                            if (array_key_exists($fieldName, $fields)) {
-                                $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
+            foreach ($this->owner->elasticSearchFields() as $fieldName => $params) {
+
+                if (is_int($fieldName)) {
+                    $fieldName = $params;
+                }
+
+                if (array_key_exists($fieldName, $relations)) {
+
+                    $className = $relations[$fieldName];
+                    $related = singleton($className);
+                    $fields = $related->inheritedDatabaseFields();
+
+                    if ($related instanceof ElasticSearchFieldsInterface) {
+
+                        foreach ($related->elasticSearchFields() as $relatedFieldName => $relatedParams) {
+
+                            if (is_int($relatedFieldName)) {
+                                $relatedFieldName = $relatedParams;
+                            }
+
+                            $concatenatedFieldName = "{$fieldName}_{$relatedFieldName}";
+
+                            if (isset($params[$relatedFieldName]['type'])) {
+
+                                $result[$concatenatedFieldName] = $params[$relatedFieldName];
+
+                            } else if (isset($relatedParams[$relatedFieldName]['type'])) {
+
+                                $result[$concatenatedFieldName] = $relatedParams;
+
+                            } else if (array_key_exists($relatedFieldName, $fields)) {
+
+                                $dataType = $this->stripDataTypeParameters($fields[$relatedFieldName]);
 
                                 if (array_key_exists($dataType, self::$mappings)) {
+                                    $spec['type'] = self::$mappings[$dataType];
 
-                                    $result[$reference . '_' . $fieldName] = array(
-                                        'IsReference' => true,
-                                        'type' => self::$mappings[$dataType],
-                                        'ReferenceName' => $reference,
-                                        'FieldName' => $fieldName
-                                    );
-                                } else {
-                                    $result[$reference . '_' . $fieldName] = array_merge(array(
-                                        'IsReference' => true,
-                                        'ReferenceName' => $reference,
-                                        'FieldName' => $fieldName
-                                    ), $params);
+                                    $result[$concatenatedFieldName] = array('type' => self::$mappings[$dataType]);
                                 }
                             }
+
                         }
                     }
                 }
@@ -159,26 +184,14 @@ class Searchable extends \DataExtension
     }
 
     /**
-     * Get all the eligible searchable fields from the dataobject
-     * @param \DataObject $dataObject
-     * @return array
-     */
-    protected function getUnprocessedSearchableFields(\DataObject $dataObject)
-    {
-        if ($dataObject instanceof ElasticSearchFieldsInterface) {
-            return $dataObject->searchableFields() + $dataObject->elasticSearchFields();
-        }
-
-        return $dataObject->searchableFields();
-    }
-
-    /**
      * @return \Elastica\Type\Mapping
      */
     public function getElasticaMapping()
     {
         $mapping = new Mapping();
         $mapping->setProperties($this->getElasticaFields());
+
+        error_log(print_r($mapping, true));
 
         return $mapping;
     }
@@ -190,43 +203,73 @@ class Searchable extends \DataExtension
      */
     public function getElasticaDocument()
     {
+        $possibleFields = $this->owner->inheritedDatabaseFields();
+
         $fields = array();
 
         foreach ($this->getElasticaFields() as $field => $config) {
 
-            // Handle Referenced DataObjects
-            if (isset($config['IsReference']) && $config['IsReference']) {
 
-                $referenceName = $config['ReferenceName'];
-                $fieldName = $config['FieldName'];
-                $index = $referenceName . '_' . $fieldName;
+            if (array_key_exists($field, $possibleFields) ||
+                $this->owner->hasMethod('get' . $field)
+            ) {
 
-                foreach ($this->owner->$referenceName() as $dataObject) {
+                switch ($config['type']) {
+                    case 'date':
 
-                    if (!isset($fields[$index])) {
-                        $fields[$index] = '';
-                    }
-
-                    $fields[$index] .= ' ' . $dataObject->$fieldName;
-                }
-            } else {
-
-                if ($field == 'FileContent') { //handle files
-                    $fields[$field] = base64_encode(file_get_contents($this->owner->getFullPath()));
-                } elseif ($field == 'LastEdited') { //handle Last_Edited field
-                    //transform into valid date field according to elastica, otherwise it complains
-
-                    if ($this->owner->$field) {
                         $date = str_replace(' ', 'T', $this->owner->$field);
 
-                        if ($date == '0000-00-00T00:00:00') {
-                            $fields[$field] = date("Y-m-d");
-                        } else {
+                        if ($date != '0000-00-00T00:00:00') {
                             $fields[$field] = $date;
                         }
+                        break;
+                    default:
+                        $fields[$field] = $this->owner->$field;
+                        break;
+                }
+
+            } else {
+
+                $possibleRelations = array_merge($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many());
+
+                list($relation, $fieldName) = explode('_', $field);
+
+                if (array_key_exists($relation, $possibleRelations)) {
+
+                    $related = $this->owner->$relation();
+
+                    if ($related instanceof \DataObject && $related->exists()) {
+
+                        $possibleFields = $related->inheritedDatabaseFields();
+
+                        if (array_key_exists($fieldName, $possibleFields)) {
+                            $fields[$field] = $related->$fieldName;
+                        }
+
+
+                    } else if ($related instanceof \DataList && $related->count()) {
+
+                        $relatedData = [];
+
+                        foreach ($related as $relatedItem) {
+
+                            $possibleFields = $relatedItem->inheritedDatabaseFields();
+
+                            if (array_key_exists($fieldName, $possibleFields) ||
+                                $related->hasMethod('get' . $fieldName)
+                            ) {
+                                $data = $relatedItem->$fieldName;
+
+                                if (!is_null($data)) {
+                                    $relatedData[] = $data;
+                                }
+                            }
+                        }
+
+                        if (count($relatedData)) {
+                            $fields[$field] = $relatedData;
+                        }
                     }
-                } else { //handle regular fields from PageTypes
-                    $fields[$field] = $this->owner->$field;
                 }
             }
 
