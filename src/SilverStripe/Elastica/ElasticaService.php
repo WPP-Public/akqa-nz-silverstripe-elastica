@@ -155,7 +155,7 @@ class ElasticaService
                 //Only index records with Show In Search enabled for Site Tree descendants
                 //otherwise index all other data objects
                 if (($record instanceof \SiteTree && $record->ShowInSearch) ||
-                    (!$record instanceof \SiteTree && $record instanceof \DataObject )
+                    (!$record instanceof \SiteTree && $record instanceof \DataObject)
                 ) {
                     $this->index($record);
                     print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
@@ -184,9 +184,7 @@ class ElasticaService
 
         foreach (\ClassInfo::subclassesFor('DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
-            if ($candidateInstance->hasExtension('SilverStripe\\Elastica\\Searchable')
-                && $candidateInstance instanceof ElasticSearchFieldsInterface
-            ) {
+            if ($candidateInstance->hasExtension('SilverStripe\\Elastica\\Searchable')) {
                 $classes[] = $candidate;
             }
         }

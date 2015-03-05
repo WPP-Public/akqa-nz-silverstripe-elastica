@@ -4,7 +4,6 @@ namespace SilverStripe\Elastica;
 
 use Elastica\Document;
 use Elastica\Type\Mapping;
-use SilverStripe\Elastica\Interfaces\ElasticSearchFieldsInterface;
 
 /**
  * Adds elastic search integration to a data object.
@@ -48,6 +47,20 @@ class Searchable extends \DataExtension
         parent::__construct();
     }
 
+    /**
+     * Returns an array of fields to be indexed. Additional configuration can be attached to these fields.
+     *
+     * Format: array('FieldName' => array('type' => 'string'));
+     *
+     * FieldName can be a field in the database or a method name
+     *
+     * @return array
+     */
+    public function indexedFields()
+    {
+        return array();
+    }
+
     public function getExcludedRelations()
     {
         return \Config::inst()->forClass(get_called_class())->excluded_relations;
@@ -68,7 +81,7 @@ class Searchable extends \DataExtension
      *
      * @return array
      */
-    public function getElasticaFields()
+    protected function getElasticaFields()
     {
         return array_merge($this->getSearchableFields(), $this->getReferenceSearchableFields());
     }
@@ -81,33 +94,30 @@ class Searchable extends \DataExtension
     {
         $result = array();
 
-        if ($this->owner instanceof ElasticSearchFieldsInterface) {
+        $fields = $this->owner->inheritedDatabaseFields();
 
-            $fields = $this->owner->inheritedDatabaseFields();
+        foreach ($this->owner->indexedFields() as $fieldName => $params) {
 
-            foreach ($this->owner->elasticSearchFields() as $fieldName => $params) {
+            if (isset($params['type'])) {
 
-                if (isset($params['type'])) {
+                $result[$fieldName] = $params;
 
-                    $result[$fieldName] = $params;
+            } else {
 
-                } else {
+                $fieldName = $params;
 
-                    $fieldName = $params;
+                if (array_key_exists($fieldName, $fields)) {
 
-                    if (array_key_exists($fieldName, $fields)) {
+                    $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
 
-                        $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
+                    if (array_key_exists($dataType, self::$mappings)) {
+                        $spec['type'] = self::$mappings[$dataType];
 
-                        if (array_key_exists($dataType, self::$mappings)) {
-                            $spec['type'] = self::$mappings[$dataType];
-
-                            $result[$fieldName] = array('type' => self::$mappings[$dataType]);
-                        }
+                        $result[$fieldName] = array('type' => self::$mappings[$dataType]);
                     }
                 }
-
             }
+
         }
 
         return $result;
@@ -120,52 +130,49 @@ class Searchable extends \DataExtension
     {
         $result = array();
 
-        if ($this->owner instanceof ElasticSearchFieldsInterface) {
+        $relations = array_merge($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many());
 
-            $relations = array_merge($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many());
+        foreach ($this->owner->indexedFields() as $fieldName => $params) {
 
-            foreach ($this->owner->elasticSearchFields() as $fieldName => $params) {
+            if (is_int($fieldName)) {
+                $fieldName = $params;
+            }
 
-                if (is_int($fieldName)) {
-                    $fieldName = $params;
-                }
+            if (array_key_exists($fieldName, $relations)) {
 
-                if (array_key_exists($fieldName, $relations)) {
+                $className = $relations[$fieldName];
+                $related = singleton($className);
+                $fields = $related->inheritedDatabaseFields();
 
-                    $className = $relations[$fieldName];
-                    $related = singleton($className);
-                    $fields = $related->inheritedDatabaseFields();
+                if ($related->hasExtension('SilverStripe\\Elastica\\Searchable')) {
 
-                    if ($related instanceof ElasticSearchFieldsInterface) {
+                    foreach ($related->indexedFields() as $relatedFieldName => $relatedParams) {
 
-                        foreach ($related->elasticSearchFields() as $relatedFieldName => $relatedParams) {
-
-                            if (is_int($relatedFieldName)) {
-                                $relatedFieldName = $relatedParams;
-                            }
-
-                            $concatenatedFieldName = "{$fieldName}_{$relatedFieldName}";
-
-                            if (isset($params[$relatedFieldName]['type'])) {
-
-                                $result[$concatenatedFieldName] = $params[$relatedFieldName];
-
-                            } else if (isset($relatedParams[$relatedFieldName]['type'])) {
-
-                                $result[$concatenatedFieldName] = $relatedParams;
-
-                            } else if (array_key_exists($relatedFieldName, $fields)) {
-
-                                $dataType = $this->stripDataTypeParameters($fields[$relatedFieldName]);
-
-                                if (array_key_exists($dataType, self::$mappings)) {
-                                    $spec['type'] = self::$mappings[$dataType];
-
-                                    $result[$concatenatedFieldName] = array('type' => self::$mappings[$dataType]);
-                                }
-                            }
-
+                        if (is_int($relatedFieldName)) {
+                            $relatedFieldName = $relatedParams;
                         }
+
+                        $concatenatedFieldName = "{$fieldName}_{$relatedFieldName}";
+
+                        if (isset($params[$relatedFieldName]['type'])) {
+
+                            $result[$concatenatedFieldName] = $params[$relatedFieldName];
+
+                        } else if (isset($relatedParams[$relatedFieldName]['type'])) {
+
+                            $result[$concatenatedFieldName] = $relatedParams;
+
+                        } else if (array_key_exists($relatedFieldName, $fields)) {
+
+                            $dataType = $this->stripDataTypeParameters($fields[$relatedFieldName]);
+
+                            if (array_key_exists($dataType, self::$mappings)) {
+                                $spec['type'] = self::$mappings[$dataType];
+
+                                $result[$concatenatedFieldName] = array('type' => self::$mappings[$dataType]);
+                            }
+                        }
+
                     }
                 }
             }
@@ -190,8 +197,6 @@ class Searchable extends \DataExtension
     {
         $mapping = new Mapping();
         $mapping->setProperties($this->getElasticaFields());
-
-        error_log(print_r($mapping, true));
 
         return $mapping;
     }
@@ -284,7 +289,9 @@ class Searchable extends \DataExtension
     public function onAfterWrite()
     {
 
-        if ($this->owner->ShowInSearch) {
+        if (($this->owner instanceof \SiteTree && $this->owner->ShowInSearch)
+            || (!$this->owner instanceof \SiteTree && $this->owner instanceof \DataObject)
+        ) {
             $this->service->index($this->owner);
         } else {
             $this->service->remove($this->owner);
