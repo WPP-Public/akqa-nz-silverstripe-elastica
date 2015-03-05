@@ -139,8 +139,10 @@ class ElasticaService
             $sng = singleton($class);
 
             $mapping = $sng->getElasticaMapping();
-            $mapping->setType($index->getType($sng->getElasticaType()));
-            $mapping->send();
+            if ($mapping) {
+                $mapping->setType($index->getType($sng->getElasticaType()));
+                $mapping->send();
+            }
         }
     }
 

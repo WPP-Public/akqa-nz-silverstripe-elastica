@@ -191,14 +191,20 @@ class Searchable extends \DataExtension
     }
 
     /**
-     * @return \Elastica\Type\Mapping
+     * @return bool|\Elastica\Type\Mapping
      */
     public function getElasticaMapping()
     {
-        $mapping = new Mapping();
-        $mapping->setProperties($this->getElasticaFields());
+        $fields = $this->getElasticaFields();
 
-        return $mapping;
+        if (count($fields)) {
+            $mapping = new Mapping();
+            $mapping->setProperties($this->getElasticaFields());
+
+            return $mapping;
+        }
+
+        return false;
     }
 
     /**
