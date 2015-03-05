@@ -4,6 +4,7 @@ namespace SilverStripe\Elastica;
 
 use Elastica\Document;
 use Elastica\Type\Mapping;
+use Psr\Log\LoggerInterface;
 
 /**
  * Adds elastic search integration to a data object.
@@ -40,7 +41,7 @@ class Searchable extends \DataExtension
 
     private $service;
 
-    public function __construct(ElasticaService $service, Logger $logger = null)
+    public function __construct(ElasticaService $service, LoggerInterface $logger = null)
     {
         $this->service = $service;
         $this->logger = $logger;

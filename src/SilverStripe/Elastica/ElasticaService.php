@@ -6,7 +6,6 @@ use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
 use Psr\Log\LoggerInterface;
-use SilverStripe\Elastica\Interfaces\ElasticSearchFieldsInterface;
 
 /**
  * A service used to interact with elastic search.
