@@ -191,6 +191,11 @@ class Searchable extends \DataExtension
         return $dataType;
     }
 
+    protected function formatDate($dateString)
+    {
+        return date('Y-m-dTH:i:s', strtotime($dateString));
+    }
+
     /**
      * @return bool|\Elastica\Type\Mapping
      */
@@ -215,9 +220,9 @@ class Searchable extends \DataExtension
      */
     public function getElasticaDocument()
     {
-        $possibleFields = $this->owner->inheritedDatabaseFields();
+        $document = new Document($this->owner->ID);
 
-        $fields = array();
+        $possibleFields = $this->owner->inheritedDatabaseFields();
 
         foreach ($this->getElasticaFields() as $field => $config) {
 
@@ -228,15 +233,12 @@ class Searchable extends \DataExtension
 
                 switch ($config['type']) {
                     case 'date':
-
-                        $date = str_replace(' ', 'T', $this->owner->$field);
-
-                        if ($date != '0000-00-00T00:00:00') {
-                            $fields[$field] = $date;
+                        if ($this->owner->$field) {
+                            $document->set($field, $this->formatDate($this->owner->$field));
                         }
                         break;
                     default:
-                        $fields[$field] = $this->owner->$field;
+                        $document->set($field, $this->owner->$field);
                         break;
                 }
 
@@ -255,7 +257,25 @@ class Searchable extends \DataExtension
                         $possibleFields = $related->inheritedDatabaseFields();
 
                         if (array_key_exists($fieldName, $possibleFields)) {
-                            $fields[$field] = $related->$fieldName;
+
+                            switch ($config['type']) {
+                                case 'date':
+                                    if ($related->$fieldName) {
+                                        $document->set($field, $this->formatDate($related->$fieldName));
+                                    }
+                                    break;
+                                default:
+                                    $document->set($field, $related->$fieldName);
+                                    break;
+                            }
+
+                        } else if ($config['type'] == 'attachment') {
+
+                            $file = $related->$fieldName();
+
+                            if ($file instanceof \File && $file->exists()) {
+                                $document->addFile($field, $file->getFullPath());
+                            }
                         }
 
 
@@ -264,6 +284,7 @@ class Searchable extends \DataExtension
                         $relatedData = [];
 
                         foreach ($related as $relatedItem) {
+                            $data = null;
 
                             $possibleFields = $relatedItem->inheritedDatabaseFields();
 
@@ -272,22 +293,28 @@ class Searchable extends \DataExtension
                             ) {
                                 $data = $relatedItem->$fieldName;
 
-                                if (!is_null($data)) {
-                                    $relatedData[] = $data;
+                            } else if ($config['type'] == 'attachment') {
+                                $file = $relatedItem->$fieldName();
+
+                                if ($file instanceof \File && $file->exists()) {
+                                    $data = base64_encode(file_get_contents($file->getFullPath()));
                                 }
+                            }
+
+                            if (!is_null($data)) {
+                                $relatedData[] = $data;
                             }
                         }
 
                         if (count($relatedData)) {
-                            $fields[$field] = $relatedData;
+                            $document->set($field, $relatedData);
                         }
                     }
                 }
             }
-
         }
 
-        return new Document($this->owner->ID, $fields);
+        return $document;
     }
 
     /**
