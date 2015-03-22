@@ -15,6 +15,7 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
     private $index;
     private $query;
     private $logger;
+    private $resultsArray;
 
     public function __construct(Index $index, Query $query, LoggerInterface $logger = null)
     {
@@ -102,38 +103,41 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
      */
     public function toArray()
     {
-        $result = array();
+        if (!is_array($this->resultsArray)) {
 
-        /** @var $found \Elastica\Result[] */
-        $found = $this->getResults();
-        $needed = array();
-        $retrieved = array();
+            $this->resultsArray = array();
 
-        foreach ($found as $item) {
-            $type = $item->getType();
+            /** @var $found \Elastica\Result[] */
+            $found = $this->getResults();
+            $needed = array();
+            $retrieved = array();
 
-            if (!array_key_exists($type, $needed)) {
-                $needed[$type] = array($item->getId());
-                $retrieved[$type] = array();
-            } else {
-                $needed[$type][] = $item->getId();
+            foreach ($found as $item) {
+                $type = $item->getType();
+
+                if (!array_key_exists($type, $needed)) {
+                    $needed[$type] = array($item->getId());
+                    $retrieved[$type] = array();
+                } else {
+                    $needed[$type][] = $item->getId();
+                }
+            }
+
+            foreach ($needed as $class => $ids) {
+                foreach ($class::get()->byIDs($ids) as $record) {
+                    $retrieved[$class][$record->ID] = $record;
+                }
+            }
+
+            foreach ($found as $item) {
+                // Safeguards against indexed items which might no longer be in the DB
+                if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
+                    $this->resultsArray[] = $retrieved[$item->getType()][$item->getId()];
+                }
             }
         }
 
-        foreach ($needed as $class => $ids) {
-            foreach ($class::get()->byIDs($ids) as $record) {
-                $retrieved[$class][$record->ID] = $record;
-            }
-        }
-
-        foreach ($found as $item) {
-            // Safeguards against indexed items which might no longer be in the DB
-            if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
-                $result[] = $retrieved[$item->getType()][$item->getId()];
-            }
-        }
-
-        return $result;
+        return $this->resultsArray;
     }
 
     public function toArrayList()
@@ -154,12 +158,12 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
 
     public function first()
     {
-        // TODO
+        return reset($this->toArray());
     }
 
     public function last()
     {
-        // TODO: Implement last() method.
+        return array_pop($this->toArray());
     }
 
 
