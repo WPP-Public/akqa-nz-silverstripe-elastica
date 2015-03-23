@@ -114,11 +114,6 @@ class ElasticaService
             if ($this->logger) {
                 $this->logger->warning($e->getMessage());
             }
-
-            if ($e instanceof NotFoundException) {
-                throw $e;
-            }
-
         }
     }
 
@@ -161,14 +156,8 @@ class ElasticaService
                     $this->index($record);
                     print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
                 } else {
-                    print "<strong>Attempting to remove: </strong> " . $record->getTitle() . "<br>\n";
-
-                    try {
-                        $this->remove($record)->getData();
-                        print "<strong>REMOVED: </strong> " . $record->getTitle() . "<br>\n";
-                    } catch (NotFoundException $e) {
-                        print "<strong>NOT INDEXED: </strong> " . $record->getTitle() . "- {$e->getMessage()} <br>\n";
-                    }
+                    $this->remove($record);
+                    print "<strong>REMOVED: </strong> " . $record->getTitle() . "<br>\n";
                 }
             }
         }
