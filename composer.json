@@ -27,7 +27,7 @@
 		"issues": "http://github.com/heyday/silverstripe-elastica/issues"
 	},
 	"require": {
-		"ruflin/elastica": "~1.4",
+		"ruflin/elastica": "1.4.3.0",
 		"silverstripe/framework": ">=3.1"
 	},
 	"autoload": {
