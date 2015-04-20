@@ -1,6 +1,8 @@
 <?php
 
-namespace SilverStripe\Elastica;
+namespace Heyday\Elastica\SilverStripe;
+
+use Heyday\Elastica\ElasticaService;
 
 /**
  * Defines and refreshes the elastic search index.

@@ -1,7 +1,7 @@
 Injector:
-  SilverStripe\Elastica\ReindexTask:
+  Heyday\Elastica\SilverStripe\ReindexTask:
     constructor:
-      - %$SilverStripe\Elastica\ElasticaService
-  SilverStripe\Elastica\Searchable:
+      - %$Heyday\Elastica\ElasticaService
+  Heyday\Elastica\SilverStripe\Searchable:
     constructor:
-      - %$SilverStripe\Elastica\ElasticaService
+      - %$Heyday\Elastica\ElasticaService

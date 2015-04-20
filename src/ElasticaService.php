@@ -1,6 +1,6 @@
 <?php
 
-namespace SilverStripe\Elastica;
+namespace Heyday\Elastica;
 
 use Elastica\Client;
 use Elastica\Exception\NotFoundException;
@@ -174,7 +174,7 @@ class ElasticaService
 
         foreach (\ClassInfo::subclassesFor('DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
-            if ($candidateInstance->hasExtension('SilverStripe\\Elastica\\Searchable')) {
+            if ($candidateInstance->hasExtension('Heyday\\Elastica\\SilverStripe\\Searchable')) {
                 $classes[] = $candidate;
             }
         }

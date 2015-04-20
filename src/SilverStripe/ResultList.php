@@ -1,6 +1,6 @@
 <?php
 
-namespace SilverStripe\Elastica;
+namespace Heyday\Elastica\SilverStripe;
 
 use Elastica\Index;
 use Elastica\Query;

@@ -1,9 +1,10 @@
 <?php
 
-namespace SilverStripe\Elastica;
+namespace Heyday\Elastica\SilverStripe;
 
 use Elastica\Document;
 use Elastica\Type\Mapping;
+use Heyday\Elastica\ElasticaService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -11,7 +12,6 @@ use Psr\Log\LoggerInterface;
  */
 class Searchable extends \DataExtension
 {
-
     /**
      * @config
      * @var array
@@ -61,11 +61,6 @@ class Searchable extends \DataExtension
     {
         $fields = $this->owner->stat('indexed_fields');
         return $fields;
-    }
-
-    public function getExcludedRelations()
-    {
-        return \Config::inst()->forClass(get_called_class())->excluded_relations;
     }
 
     /**
@@ -146,7 +141,7 @@ class Searchable extends \DataExtension
                 $related = singleton($className);
                 $fields = $related->inheritedDatabaseFields();
 
-                if ($related->hasExtension('SilverStripe\\Elastica\\Searchable')) {
+                if ($related->hasExtension('Heyday\\Elastica\\SilverStripe\\Searchable')) {
 
                     foreach ($related->indexedFields() as $relatedFieldName => $relatedParams) {
 
