@@ -59,7 +59,8 @@ class Searchable extends \DataExtension
      */
     public function indexedFields()
     {
-        return array();
+        $fields = $this->owner->stat('indexed_fields');
+        return $fields;
     }
 
     public function getExcludedRelations()
