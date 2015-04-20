@@ -55,12 +55,21 @@ class Searchable extends \DataExtension
      *
      * FieldName can be a field in the database or a method name
      *
-     * @return array
+     * @return array|\scalar
      */
     public function indexedFields()
     {
-        $fields = $this->owner->stat('indexed_fields');
-        return $fields;
+        return $this->owner->stat('indexed_fields');
+    }
+
+    /**
+     * Return an array of dependant class names. These are classes that need to be reindexed when an instance of the
+     * extended class is updated or when a relationship to it changes.
+     * @return array|\scalar
+     */
+    public function dependentClasses()
+    {
+        return $this->owner->stat('dependent_classes');
     }
 
     /**
@@ -274,7 +283,6 @@ class Searchable extends \DataExtension
                             }
                         }
 
-
                     } else if ($related instanceof \DataList && $related->count()) {
 
                         $relatedData = [];
@@ -318,7 +326,6 @@ class Searchable extends \DataExtension
      */
     public function onAfterWrite()
     {
-
         if (($this->owner instanceof \SiteTree && $this->owner->ShowInSearch)
             || (!$this->owner instanceof \SiteTree && $this->owner instanceof \DataObject)
         ) {
@@ -326,6 +333,8 @@ class Searchable extends \DataExtension
         } else {
             $this->service->remove($this->owner);
         }
+
+        $this->updateDependentClasses();
     }
 
     /**
@@ -334,6 +343,50 @@ class Searchable extends \DataExtension
     public function onAfterDelete()
     {
         $this->service->remove($this->owner);
+        $this->updateDependentClasses();
+    }
+
+    /**
+     * Update dependent classes after the extended object has been removed from a ManyManyList
+     */
+    public function onAfterManyManyRelationRemove()
+    {
+        $this->updateDependentClasses();
+    }
+
+    /**
+     * Update dependent classes after the extended object has been added to a ManyManyList
+     */
+    public function onAfterManyManyRelationAdd()
+    {
+        $this->updateDependentClasses();
+    }
+
+    /**
+     * Updates the records of all instances of dependent classes.
+     */
+    protected function updateDependentClasses()
+    {
+        $classes = $this->dependentClasses();
+
+        foreach ($classes as $class) {
+            $list = \DataList::create($class);
+
+            foreach ($list as $object) {
+
+                if ($object instanceof \DataObject &&
+                    $object->hasExtension('Heyday\\Elastica\\SilverStripe\\Searchable')
+                ){
+                    if (($object instanceof \SiteTree && $object->ShowInSearch) ||
+                        (!$object instanceof \SiteTree)
+                    ){
+                        $this->service->index($object);
+                    } else {
+                        $this->service->remove($object);
+                    }
+                }
+            }
+        }
     }
 
 }
