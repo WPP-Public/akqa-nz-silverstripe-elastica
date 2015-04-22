@@ -5,6 +5,7 @@ namespace Heyday\Elastica;
 use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
+use Heyday\Elastica\SilverStripe\ResultList;
 use Psr\Log\LoggerInterface;
 
 /**
