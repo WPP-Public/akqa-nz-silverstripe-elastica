@@ -2,11 +2,11 @@
 Name: Heyday Elastica Config
 ---
 Injector:
-  Heyday\Elastica\SilverStripe\ReindexTask:
+  Heyday\Elastica\ReindexTask:
     constructor:
       - %$Heyday\Elastica\ElasticaService
-  Heyday\Elastica\SilverStripe\Searchable:
+  Heyday\Elastica\Searchable:
     constructor:
       - %$Heyday\Elastica\ElasticaService
   ManyManyList:
-    class: Heyday\Elastica\SilverStripe\ManyManyList
+    class: Heyday\Elastica\ManyManyList

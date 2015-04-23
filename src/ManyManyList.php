@@ -1,6 +1,6 @@
 <?php
 
-namespace Heyday\Elastica\SilverStripe;
+namespace Heyday\Elastica;
 
 use \ManyManyList as SilverStripeManyManyList;
 

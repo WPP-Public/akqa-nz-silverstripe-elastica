@@ -1,10 +1,9 @@
 <?php
 
-namespace Heyday\Elastica\SilverStripe;
+namespace Heyday\Elastica;
 
 use Elastica\Document;
 use Elastica\Type\Mapping;
-use Heyday\Elastica\ElasticaService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -123,7 +122,6 @@ class Searchable extends \DataExtension
                     }
                 }
             }
-
         }
 
         return $result;
@@ -150,7 +148,7 @@ class Searchable extends \DataExtension
                 $related = singleton($className);
                 $fields = $related->inheritedDatabaseFields();
 
-                if ($related->hasExtension('Heyday\\Elastica\\SilverStripe\\Searchable')) {
+                if ($related->hasExtension('Heyday\\Elastica\\Searchable')) {
 
                     foreach ($related->indexedFields() as $relatedFieldName => $relatedParams) {
 
@@ -178,7 +176,6 @@ class Searchable extends \DataExtension
                                 $result[$concatenatedFieldName] = array('type' => self::$mappings[$dataType]);
                             }
                         }
-
                     }
                 }
             }
@@ -375,7 +372,7 @@ class Searchable extends \DataExtension
             foreach ($list as $object) {
 
                 if ($object instanceof \DataObject &&
-                    $object->hasExtension('Heyday\\Elastica\\SilverStripe\\Searchable')
+                    $object->hasExtension('Heyday\\Elastica\\Searchable')
                 ){
                     if (($object instanceof \SiteTree && $object->ShowInSearch) ||
                         (!$object instanceof \SiteTree)

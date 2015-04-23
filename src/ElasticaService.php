@@ -5,13 +5,12 @@ namespace Heyday\Elastica;
 use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
-use Heyday\Elastica\SilverStripe\ResultList;
 use Psr\Log\LoggerInterface;
 
 /**
  * A service used to interact with elastic search.
  */
-class ElasticaService
+class ElasticaService extends \Object
 {
 
     /**
@@ -175,7 +174,7 @@ class ElasticaService
 
         foreach (\ClassInfo::subclassesFor('DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
-            if ($candidateInstance->hasExtension('Heyday\\Elastica\\SilverStripe\\Searchable')) {
+            if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable')) {
                 $classes[] = $candidate;
             }
         }
