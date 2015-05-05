@@ -57,14 +57,44 @@ class ElasticaService extends \Object
     }
 
     /**
-     * Performs a search query and returns a result list.
-     *
+     * @return array|\scalar
+     */
+    protected function getIndexConfig()
+    {
+        return $this->stat('index_config');
+    }
+
+    /**
+     * Performs a search query and returns either a ResultList (SS template compatible) or an Elastica\ResultSet
      * @param \Elastica\Query|string|array $query
+     * @param bool $returnResultList
      * @return ResultList
      */
-    public function search($query)
+    public function search($query, $returnResultList = true)
     {
-        return new ResultList($this->getIndex(), Query::create($query), $this->logger);
+        if ($returnResultList) {
+            return new ResultList($this->getIndex(), Query::create($query), $this->logger);
+        }
+
+        return $this->getIndex()->search($query);
+    }
+
+    public function createIndex()
+    {
+        $index = $this->getIndex();
+
+        if ($config = $this->getIndexConfig()) {
+            try {
+                $index->create($config, true);
+            } catch (\Exception $e) {
+
+                if ($this->logger) {
+                    $this->logger->warning($e->getMessage());
+                }
+            }
+        } else {
+            $index->create();
+        }
     }
 
     /**
@@ -125,7 +155,7 @@ class ElasticaService extends \Object
         $index = $this->getIndex();
 
         if (!$index->exists()) {
-            $index->create();
+            $this->createIndex();
         }
 
         foreach ($this->getIndexedClasses() as $class) {
