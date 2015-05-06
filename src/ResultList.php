@@ -19,6 +19,12 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
 
     public function __construct(Index $index, Query $query, LoggerInterface $logger = null)
     {
+        //Optimise the query by just getting back the ids and types
+        $query->setFields(array(
+            '_id',
+            '_type'
+        ));
+
         $this->index = $index;
         $this->query = $query;
         $this->logger = $logger;
