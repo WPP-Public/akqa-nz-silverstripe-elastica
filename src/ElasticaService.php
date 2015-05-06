@@ -67,16 +67,17 @@ class ElasticaService extends \Object
     /**
      * Performs a search query and returns either a ResultList (SS template compatible) or an Elastica\ResultSet
      * @param \Elastica\Query|string|array $query
+     * @param array $options Options defined in \Elastica\Search
      * @param bool $returnResultList
      * @return ResultList
      */
-    public function search($query, $returnResultList = true)
+    public function search($query, $options = null, $returnResultList = true)
     {
         if ($returnResultList) {
             return new ResultList($this->getIndex(), Query::create($query), $this->logger);
         }
 
-        return $this->getIndex()->search($query);
+        return $this->getIndex()->search($query, $options);
     }
 
     public function createIndex()
