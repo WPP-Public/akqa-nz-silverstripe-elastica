@@ -70,36 +70,55 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
     }
 
     /**
-     * @return array
+     * @return array|\Elastica\ResultSet
      */
     public function getResults()
     {
-        $results = [];
         try {
-            $results = $this->index->search($this->query)->getResults();
+            return $this->index->search($this->query);
         } catch (\Exception $e) {
             if ($this->logger) {
                 $this->logger->critical($e->getMessage());
             }
         }
-
-        return $results;
     }
 
+    /**
+     * @return \ArrayIterator|\Traversable
+     */
     public function getIterator()
     {
         return new \ArrayIterator($this->toArray());
     }
 
+    /**
+     * @param $limit
+     * @param int $offset
+     * @return ResultList|\SS_Limitable
+     */
     public function limit($limit, $offset = 0)
     {
         $list = clone $this;
 
-        $list->getQuery()->setLimit($limit);
+        $list->getQuery()->setSize($limit);
         $list->getQuery()->setFrom($offset);
 
         return $list;
     }
+
+    /**
+     * @param array $sortArgs
+     * @return ResultList
+     */
+    public function sort(array $sortArgs)
+    {
+        $list = clone $this;
+
+        $list->getQuery()->setSort($sortArgs);
+
+        return $list;
+    }
+
 
     /**
      * Converts results of type {@link \Elastica\Result}
@@ -201,6 +220,11 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
     public function count()
     {
         return count($this->toArray());
+    }
+
+    public function totalItems()
+    {
+        return $this->getResults()->getTotalHits();
     }
 
     /**
