@@ -195,7 +195,7 @@ class Searchable extends \DataExtension
 
     protected function formatDate($dateString)
     {
-        return date('Y-m-dTH:i:s', strtotime($dateString));
+        return date('Y-m-d\TH:i:s', strtotime($dateString));
     }
 
     /**
