@@ -228,7 +228,6 @@ class Searchable extends \DataExtension
 
         foreach ($this->getElasticaFields() as $field => $config) {
 
-
             if (array_key_exists($field, $possibleFields) ||
                 $this->owner->hasMethod('get' . $field)
             ) {
@@ -292,7 +291,16 @@ class Searchable extends \DataExtension
                             if (array_key_exists($fieldName, $possibleFields) ||
                                 $related->hasMethod('get' . $fieldName)
                             ) {
-                                $data = $relatedItem->$fieldName;
+                                switch ($config['type']) {
+                                    case 'date':
+                                        if ($relatedItem->$fieldName) {
+                                            $data = $this->formatDate($relatedItem->$fieldName);
+                                        }
+                                        break;
+                                    default:
+                                        $data = $relatedItem->$fieldName;
+                                        break;
+                                }
 
                             } else if ($config['type'] == 'attachment') {
                                 $file = $relatedItem->$fieldName();
