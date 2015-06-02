@@ -4,6 +4,7 @@ namespace Heyday\Elastica;
 
 use Elastica\Index;
 use Elastica\Query;
+use Elastica\ResultSet;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -16,6 +17,11 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
     private $query;
     private $logger;
     private $resultsArray;
+
+    /**
+     * @var ResultSet
+     */
+    private $resultSet;
 
     public function __construct(Index $index, Query $query, LoggerInterface $logger = null)
     {
@@ -33,6 +39,8 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
     public function __clone()
     {
         $this->query = clone $this->query;
+        $this->resultsArray = false;
+        $this->resultSet = null;
     }
 
     /**
@@ -74,13 +82,17 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
      */
     public function getResults()
     {
-        try {
-            return $this->index->search($this->query);
-        } catch (\Exception $e) {
-            if ($this->logger) {
-                $this->logger->critical($e->getMessage());
+        if (is_null($this->$resultSet)) {
+            try {
+                $this->resultSet = $this->index->search($this->query);
+            } catch (\Exception $e) {
+                if ($this->logger) {
+                    $this->logger->critical($e->getMessage());
+                }
             }
         }
+
+        return $this->resultSet;
     }
 
     /**
