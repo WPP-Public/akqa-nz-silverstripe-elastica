@@ -166,6 +166,10 @@ class Searchable extends \DataExtension
 
                             $result[$concatenatedFieldName] = $relatedParams;
 
+                        } else if (isset($relatedParams['type'])) {
+
+                            $result[$concatenatedFieldName] = $relatedParams;
+
                         } else if (array_key_exists($relatedFieldName, $fields)) {
 
                             $dataType = $this->stripDataTypeParameters($fields[$relatedFieldName]);
@@ -303,10 +307,16 @@ class Searchable extends \DataExtension
                                 }
 
                             } else if ($config['type'] == 'attachment') {
-                                $file = $relatedItem->$fieldName();
+                                if ($relatedItem->hasMethod('get' . $fieldName)) {
+                                    $methodName = 'get' . $fieldName;
+                                    $data = $relatedItem->$methodName();
+                                } else {
+                                    $file = $relatedItem->$fieldName();
 
-                                if ($file instanceof \File && $file->exists()) {
-                                    $data = base64_encode(file_get_contents($file->getFullPath()));
+                                    if ($file instanceof \File && $file->exists()) {
+                                        $data = base64_encode(file_get_contents($file->getFullPath()));
+                                    }
+
                                 }
                             }
 
@@ -381,10 +391,10 @@ class Searchable extends \DataExtension
 
                 if ($object instanceof \DataObject &&
                     $object->hasExtension('Heyday\\Elastica\\Searchable')
-                ){
+                ) {
                     if (($object instanceof \SiteTree && $object->ShowInSearch) ||
                         (!$object instanceof \SiteTree)
-                    ){
+                    ) {
                         $this->service->index($object);
                     } else {
                         $this->service->remove($object);
