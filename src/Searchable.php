@@ -266,11 +266,75 @@ class Searchable extends \DataExtension
 
                     if ($related instanceof \DataObject && $related->exists()) {
 
-                        return $this->handleSingleReference($related, $fieldName, $config, $document, $field);
+                        $possibleFields = $related->inheritedDatabaseFields();
+
+                        if (array_key_exists($fieldName, $possibleFields)) {
+
+                            switch ($config['type']) {
+                                case 'date':
+                                    if ($related->$fieldName) {
+                                        $document->set($field, $this->formatDate($related->$fieldName));
+                                    }
+                                    break;
+                                default:
+                                    $document->set($field, $related->$fieldName);
+                                    break;
+                            }
+
+                        } else if ($config['type'] == 'attachment') {
+
+                            $file = $related->$fieldName();
+
+                            if ($file instanceof \File && $file->exists()) {
+                                $document->addFile($field, $file->getFullPath());
+                            }
+                        }
 
                     } else if ($related instanceof \DataList && $related->count()) {
 
-                        $possibleFields = $this->handleMultipleReferences($related, $fieldName, $config, $document, $field);
+                        $relatedData = [];
+
+                        foreach ($related as $relatedItem) {
+                            $data = null;
+
+                            $possibleFields = $relatedItem->inheritedDatabaseFields();
+
+                            if (array_key_exists($fieldName, $possibleFields) ||
+                                $related->hasMethod('get' . $fieldName)
+                            ) {
+                                switch ($config['type']) {
+                                    case 'date':
+                                        if ($relatedItem->$fieldName) {
+                                            $data = $this->formatDate($relatedItem->$fieldName);
+                                        }
+                                        break;
+                                    default:
+                                        $data = $relatedItem->$fieldName;
+                                        break;
+                                }
+
+                            } else if ($config['type'] == 'attachment') {
+                                if ($relatedItem->hasMethod('get' . $fieldName)) {
+                                    $methodName = 'get' . $fieldName;
+                                    $data = $relatedItem->$methodName();
+                                } else {
+                                    $file = $relatedItem->$fieldName();
+
+                                    if ($file instanceof \File && $file->exists()) {
+                                        $data = base64_encode(file_get_contents($file->getFullPath()));
+                                    }
+
+                                }
+                            }
+
+                            if (!is_null($data)) {
+                                $relatedData[] = $data;
+                            }
+                        }
+
+                        if (count($relatedData)) {
+                            $document->set($field, $relatedData);
+                        }
                     }
                 }
             }
@@ -364,89 +428,6 @@ class Searchable extends \DataExtension
                 $document->set($field, $fieldValue);
                 break;
         }
-    }
-
-    /**
-     * Assigns value if $related is a Dataobject (used by getElasticaDocument())
-     * @param $related
-     * @param $fieldName
-     * @param $config
-     * @param \Elastica\Document $document
-     * @param $field
-     */
-    protected function handleSingleReference($related, $fieldName, $config, $document, $field)
-    {
-        $possibleFields = $related->inheritedDatabaseFields();
-
-        if (array_key_exists($fieldName, $possibleFields)) {
-            $this->setValue($config, $field, $document, $related->$fieldName);
-
-        } else if ($config['type'] == 'attachment') {
-
-            $file = $related->$fieldName();
-
-            if ($file instanceof \File && $file->exists()) {
-                $document->addFile($field, $file->getFullPath());
-            }
-        }
-    }
-
-    /**
-     * Assigns value if $related is a DataList (used by getElasticaDocument())
-     * @param $related
-     * @param $fieldName
-     * @param $config
-     * @param \Elastica\Document $document
-     * @param $field
-     * @return mixed
-     */
-    public function handleMultipleReferences($related, $fieldName, $config, $document, $field)
-    {
-        $relatedData = [];
-
-        foreach ($related as $relatedItem) {
-            $data = null;
-
-            $possibleFields = $relatedItem->inheritedDatabaseFields();
-
-            if (array_key_exists($fieldName, $possibleFields) ||
-                $related->hasMethod('get' . $fieldName)
-            ) {
-                switch ($config['type']) {
-                    case 'date':
-                        if ($relatedItem->$fieldName) {
-                            $data = $this->formatDate($relatedItem->$fieldName);
-                        }
-                        break;
-                    default:
-                        $data = $relatedItem->$fieldName;
-                        break;
-                }
-
-            } else if ($config['type'] == 'attachment') {
-                if ($relatedItem->hasMethod('get' . $fieldName)) {
-                    $methodName = 'get' . $fieldName;
-                    $data = $relatedItem->$methodName();
-                } else {
-                    $file = $relatedItem->$fieldName();
-
-                    if ($file instanceof \File && $file->exists()) {
-                        $data = base64_encode(file_get_contents($file->getFullPath()));
-                    }
-
-                }
-            }
-
-            if (!is_null($data)) {
-                $relatedData[] = $data;
-            }
-        }
-
-        if (count($relatedData)) {
-            $document->set($field, $relatedData);
-            return $possibleFields;
-        }
-        return $possibleFields;
     }
 
 }
