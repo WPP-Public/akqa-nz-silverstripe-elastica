@@ -11,6 +11,8 @@ use Psr\Log\LoggerInterface;
  */
 class Searchable extends \DataExtension
 {
+    public static $published_field = 'SS_Published';
+
     /**
      * @config
      * @var array
@@ -95,7 +97,11 @@ class Searchable extends \DataExtension
      */
     protected function getElasticaFields()
     {
-        return array_merge($this->getSearchableFields(), $this->getReferenceSearchableFields());
+        return array_merge(
+            array(self::$published_field => array('type' => 'boolean')),
+            $this->getSearchableFields(),
+            $this->getReferenceSearchableFields()
+        );
     }
 
     /**
@@ -236,6 +242,21 @@ class Searchable extends \DataExtension
     }
 
     /**
+     * @param Document $document
+     */
+    protected function setPublishedStatus($document)
+    {
+        $isLive = true;
+        if ($this->owner->hasExtension('Versioned')) {
+            if ($this->owner instanceof \SiteTree) {
+                $isLive = $this->owner->isPublished();
+            }
+        }
+
+        $document->set(self::$published_field, (bool) $isLive);
+    }
+
+    /**
      * Assigns value to the fields indexed from getElasticaFields()
      *
      * @return Document
@@ -243,6 +264,8 @@ class Searchable extends \DataExtension
     public function getElasticaDocument()
     {
         $document = new Document($this->owner->ID);
+
+        $this->setPublishedStatus($document);
 
         $possibleFields = $this->owner->inheritedDatabaseFields();
 
@@ -413,19 +436,20 @@ class Searchable extends \DataExtension
 
     /**
      * @param $config
-     * @param $field
+     * @param $fieldName
      * @param \Elastica\Document $document
+     * @param $fieldValue
      */
-    public function setValue($config, $field, $document, $fieldValue)
+    public function setValue($config, $fieldName, $document, $fieldValue)
     {
         switch ($config['type']) {
             case 'date':
                 if ($fieldValue) {
-                    $document->set($field, $this->formatDate($fieldValue));
+                    $document->set($fieldName, $this->formatDate($fieldValue));
                 }
                 break;
             default:
-                $document->set($field, $fieldValue);
+                $document->set($fieldName, $fieldValue);
                 break;
         }
     }
