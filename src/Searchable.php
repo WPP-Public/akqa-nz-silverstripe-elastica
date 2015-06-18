@@ -112,7 +112,7 @@ class Searchable extends \DataExtension
     {
         $result = array();
 
-        $fields = $this->owner->inheritedDatabaseFields();
+        $fields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->stat('fixed_fields'));
 
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
 
@@ -267,7 +267,7 @@ class Searchable extends \DataExtension
 
         $this->setPublishedStatus($document);
 
-        $possibleFields = $this->owner->inheritedDatabaseFields();
+        $possibleFields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->stat('fixed_fields'));
 
         foreach ($this->getElasticaFields() as $field => $config) {
 
