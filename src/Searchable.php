@@ -413,21 +413,22 @@ class Searchable extends \DataExtension
     protected function updateDependentClasses()
     {
         $classes = $this->dependentClasses();
+        if($classes) {
+            foreach ($classes as $class) {
+                $list = \DataList::create($class);
 
-        foreach ($classes as $class) {
-            $list = \DataList::create($class);
+                foreach ($list as $object) {
 
-            foreach ($list as $object) {
-
-                if ($object instanceof \DataObject &&
-                    $object->hasExtension('Heyday\\Elastica\\Searchable')
-                ) {
-                    if (($object instanceof \SiteTree && $object->ShowInSearch) ||
-                        (!$object instanceof \SiteTree)
+                    if ($object instanceof \DataObject &&
+                        $object->hasExtension('Heyday\\Elastica\\Searchable')
                     ) {
-                        $this->service->index($object);
-                    } else {
-                        $this->service->remove($object);
+                        if (($object instanceof \SiteTree && $object->ShowInSearch) ||
+                            (!$object instanceof \SiteTree)
+                        ) {
+                            $this->service->index($object);
+                        } else {
+                            $this->service->remove($object);
+                        }
                     }
                 }
             }
