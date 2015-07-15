@@ -182,7 +182,8 @@ class ElasticaService extends \Object
                 //Only index records with Show In Search enabled for Site Tree descendants
                 //otherwise index all other data objects
                 if (($record instanceof \SiteTree && $record->ShowInSearch) ||
-                    (!$record instanceof \SiteTree && $record instanceof \DataObject)
+                    (!$record instanceof \SiteTree && ($record->hasMethod('ShowInSearch') && $record->ShowInSearch)) ||
+                    (!$record instanceof \SiteTree && !$record->hasMethod('ShowInSearch'))
                 ) {
                     $this->index($record);
                     print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
