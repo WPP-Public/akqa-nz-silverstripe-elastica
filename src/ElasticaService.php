@@ -29,15 +29,33 @@ class ElasticaService extends \Object
     private $logger;
 
     /**
+     * @var string
+     */
+    private $indexingMemory;
+
+    /**
+     * @var bool
+     */
+    private $indexingMemorySet = false;
+
+    /**
      * @param Client $client
      * @param string $indexName
      * @param LoggerInterface $logger
      */
-    public function __construct(Client $client, $indexName, LoggerInterface $logger = null)
+    /**
+     * @param Client $client
+     * @param $indexName
+     * @param LoggerInterface $logger
+     * @param string $indexingMemory Increases the memory limit while indexing. A memory limit string, such as "64M".
+     * 'unlimited' if you want no limit
+     */
+    public function __construct(Client $client, $indexName, LoggerInterface $logger = null, $indexingMemory = null)
     {
         $this->client = $client;
         $this->indexName = $indexName;
         $this->logger = $logger;
+        $this->indexingMemory = $indexingMemory;
     }
 
     /**
@@ -106,6 +124,17 @@ class ElasticaService extends \Object
      */
     public function index($record)
     {
+        if (!$this->indexingMemorySet && $this->indexingMemory) {
+
+            if ($this->indexingMemory == 'unlimited') {
+                increase_memory_limit_to();
+            } else {
+                increase_memory_limit_to($this->indexingMemory);
+            }
+
+            $this->indexingMemorySet = true;
+        }
+
         try {
 
             $document = $record->getElasticaDocument();
