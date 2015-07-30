@@ -205,6 +205,8 @@ class ElasticaService extends \Object
      */
     public function refresh()
     {
+        \Versioned::reading_stage('Live');
+
         foreach ($this->getIndexedClasses() as $class) {
             foreach ($class::get() as $record) {
 
