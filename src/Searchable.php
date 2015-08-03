@@ -371,7 +371,8 @@ class Searchable extends \DataExtension
      */
     public function onAfterWrite()
     {
-        \Versioned::reading_stage('Live');
+        $reading_mode = \Versioned::get_reading_mode();
+        \Versioned::set_reading_mode('Stage.Live');
         
         if (($this->owner instanceof \SiteTree && $this->owner->ShowInSearch) ||
             (!$this->owner instanceof \SiteTree && ($this->owner->hasMethod('getShowInSearch') && $this->owner->ShowInSearch)) ||
@@ -383,6 +384,8 @@ class Searchable extends \DataExtension
         }
 
         $this->updateDependentClasses();
+
+        \Versioned::set_reading_mode($reading_mode);
     }
 
     /**

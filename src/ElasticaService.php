@@ -205,7 +205,8 @@ class ElasticaService extends \Object
      */
     public function refresh()
     {
-        \Versioned::reading_stage('Live');
+        $reading_mode = \Versioned::get_reading_mode();
+        \Versioned::set_reading_mode('Stage.Live');
 
         foreach ($this->getIndexedClasses() as $class) {
             foreach ($class::get() as $record) {
@@ -224,6 +225,7 @@ class ElasticaService extends \Object
                 }
             }
         }
+        \Versioned::set_reading_mode($reading_mode);
     }
 
     /**
