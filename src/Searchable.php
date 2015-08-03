@@ -371,8 +371,11 @@ class Searchable extends \DataExtension
      */
     public function onAfterWrite()
     {
-        if (($this->owner instanceof \SiteTree && $this->owner->ShowInSearch)
-            || (!$this->owner instanceof \SiteTree && $this->owner instanceof \DataObject)
+        \Versioned::reading_stage('Live');
+        
+        if (($this->owner instanceof \SiteTree && $this->owner->ShowInSearch) ||
+            (!$this->owner instanceof \SiteTree && ($this->owner->hasMethod('getShowInSearch') && $this->owner->ShowInSearch)) ||
+            (!$this->owner instanceof \SiteTree && !$this->owner->hasMethod('getShowInSearch'))
         ) {
             $this->service->index($this->owner);
         } else {
