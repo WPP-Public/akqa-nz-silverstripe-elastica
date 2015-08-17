@@ -373,14 +373,19 @@ class Searchable extends \DataExtension
     {
         $reading_mode = \Versioned::get_reading_mode();
         \Versioned::set_reading_mode('Stage.Live');
-        
-        if (($this->owner instanceof \SiteTree && $this->owner->ShowInSearch) ||
-            (!$this->owner instanceof \SiteTree && ($this->owner->hasMethod('getShowInSearch') && $this->owner->ShowInSearch)) ||
-            (!$this->owner instanceof \SiteTree && !$this->owner->hasMethod('getShowInSearch'))
+
+        $versionToIndex = \DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
+        if (is_null($versionToIndex)) {
+            $versionToIndex = $this->owner;
+        }
+
+        if (($versionToIndex instanceof \SiteTree && $versionToIndex->ShowInSearch) ||
+            (!$versionToIndex instanceof \SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
+            (!$versionToIndex instanceof \SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
         ) {
-            $this->service->index($this->owner);
+            $this->service->index($versionToIndex);
         } else {
-            $this->service->remove($this->owner);
+            $this->service->remove($versionToIndex);
         }
 
         $this->updateDependentClasses();
