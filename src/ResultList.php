@@ -12,7 +12,7 @@ use Psr\Log\LoggerInterface;
 /**
  * A list wrapper around the results from a query. Note that not all operations are implemented.
  */
-class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
+class ResultList extends \ViewableData implements \SS_Limitable
 {
 
     private $index;
@@ -91,7 +91,7 @@ class ResultList extends \ViewableData implements \SS_Limitable, \SS_List
      */
     public function getResults()
     {
-        if (is_null($this->$resultSet)) {
+        if (is_null($this->resultSet)) {
             try {
                 $this->resultSet = $this->index->search($this->query);
             } catch (\Exception $e) {
