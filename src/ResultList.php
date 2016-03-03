@@ -2,8 +2,6 @@
 
 namespace Heyday\Elastica;
 
-use Elastica\Filter\Bool;
-use Elastica\Filter\Term;
 use Elastica\Index;
 use Elastica\Query;
 use Elastica\ResultSet;
@@ -35,8 +33,8 @@ class ResultList extends \ViewableData implements \SS_Limitable
 
         //If we are in live reading mode, only return published documents
         if (\Versioned::get_reading_mode() == \Versioned::DEFAULT_MODE) {
-            $publishedFilter = new Bool();
-            $publishedFilter->addMust(new Term(array(Searchable::$published_field => 'true')));
+            $publishedFilter = new Query\BoolQuery();
+            $publishedFilter->addMust(new Query\Term([Searchable::$published_field => 'true']));
             $query->setPostFilter($publishedFilter);
         }
 
