@@ -151,32 +151,34 @@ class ResultList extends \ViewableData implements \SS_Limitable
 
             $this->resultsArray = array();
 
-            /** @var $found \Elastica\Result[] */
             $found = $this->getResults();
             $needed = array();
             $retrieved = array();
 
-            foreach ($found as $item) {
-                $type = $item->getType();
+            if (is_array($found) || $found instanceof \ArrayAccess) {
 
-                if (!array_key_exists($type, $needed)) {
-                    $needed[$type] = array($item->getId());
-                    $retrieved[$type] = array();
-                } else {
-                    $needed[$type][] = $item->getId();
+                foreach ($found as $item) {
+                    $type = $item->getType();
+
+                    if (!array_key_exists($type, $needed)) {
+                        $needed[$type] = array($item->getId());
+                        $retrieved[$type] = array();
+                    } else {
+                        $needed[$type][] = $item->getId();
+                    }
                 }
-            }
 
-            foreach ($needed as $class => $ids) {
-                foreach ($class::get()->byIDs($ids) as $record) {
-                    $retrieved[$class][$record->ID] = $record;
+                foreach ($needed as $class => $ids) {
+                    foreach ($class::get()->byIDs($ids) as $record) {
+                        $retrieved[$class][$record->ID] = $record;
+                    }
                 }
-            }
 
-            foreach ($found as $item) {
-                // Safeguards against indexed items which might no longer be in the DB
-                if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
-                    $this->resultsArray[] = $retrieved[$item->getType()][$item->getId()];
+                foreach ($found as $item) {
+                    // Safeguards against indexed items which might no longer be in the DB
+                    if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
+                        $this->resultsArray[] = $retrieved[$item->getType()][$item->getId()];
+                    }
                 }
             }
         }
