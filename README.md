@@ -12,6 +12,7 @@ This module is a fork of [SilverStripe's Elastica Module](https://github.com/sil
 * Uses [PSR/Log](https://github.com/php-fig/log) interface for logging purposes (optional)
 * Uses YAML configuration to index Data Objects and Pages
 * Can handle has_many, many_many, and has_one relationships in the indexed ElasticSearch document
+* Can handle invalidation and reindexing of related data objects
 * Can handle custom fields that are not in the database but only exist as part of an object instance
 * Infers ElasticSearch document field type from the database field type defined in the corresponding SilverStripe model
 
@@ -104,6 +105,8 @@ RelatedDataObject:
   indexed_fields:
     - Title
     - SomeOtherField
+  dependent_classes:
+    - SpecialPageWithRelatedDataObject # invalidates the index for SpecialPageWithRelatedDataObject when a RelatedDataObject is updated/created
 
 ```
 
