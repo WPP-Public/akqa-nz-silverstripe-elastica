@@ -1,45 +1,223 @@
-SilverStripe Elastica Module
-============================
+# Heyday's SilverStripe Elastica Module
 
-Provides elastic search integration for SilverStripe DataObjects using Elastica.
+Facilitates searching and indexing of SilverStripe CMS using ElasticSearch. We use Elastica to do all the heavy lifting in terms of communication with the elastic search server. 
 
-Usage
------
+This module makes it easy to use ElasticSearch with SilverStripe without limiting any of the functionality found in Elastica. Basically anything that can be done with Elastica alone can be done in conjunction with this module.
 
-The first step is to configure the Elastic Search service. To do this, the configuration system
-is used. The simplest default configuration (i.e. for `mysite/_config/injector.yml`) is:
+This module is a fork of [SilverStripe's Elastica Module](https://github.com/silverstripe-australia/silverstripe-elastica). 
 
-    Injector:
-      SilverStripe\Elastica\ElasticaService:
-        constructor:
-          - %$Elastica\Client
-          - index-name-to-use
+## Features
 
-You can then use the `SilverStripe\Elastica\Searchable` extension to add searching functionality
-to your data objects.
+* Uses [Elastica](https://github.com/ruflin/Elastica) to communicate with the ElasticSearch Server
+* Uses [PSR/Log](https://github.com/php-fig/log) interface for logging purposes (optional)
+* Uses YAML configuration to index Data Objects and Pages
+* Can handle has_many, many_many, and has_one relationships in the indexed ElasticSearch document
+* Can handle custom fields that are not in the database but only exist as part of an object instance
+* Infers ElasticSearch document field type from the database field type defined in the corresponding SilverStripe model
 
-You could for example add the following code to `mysite/_config/injector.yml`:
+## Installation
 
-    SiteTree:
-      extensions:
-        - 'SilverStripe\Elastica\Searchable'
+```bash
+$ composer require heyday/silverstripe-elastica:~1.0
+```
 
-Elasticsearch can then be interacted with using the `SilverStripe\Elastica\ElasticService` class.
+## Usage
 
-To add special fields to the index, just update $searchable_fields for an object:
+### Elastica Service configuration example:
+mysite/_config/search.yml
+```yaml
+Heyday\Elastica\ElasticaService: # Example of customising the index config on the elastic search server (completely optional).
+  index_config:  
+    analysis:
+      analyzer:
+        default :
+          type : custom
+          tokenizer : standard
+          filter :
+            - standard
+            - lowercase
+            - stemming_filter
+      filter:
+        stemming_filter:
+          type: snowball
+          language: English
 
-    class SomePage extends Page
+---
+Only:
+  environment: dev
+---
+Injector:
+  Elastica\Client:
+    constructor:
+      - host: localhost # hostname of the elastic search server
+        port: 9200 # port number of the elastic search server
+
+  Heyday\Elastica\ElasticaService:
+    constructor:
+      - %$Elastica\Client
+      - name-of-index  # name of the index on the elastic search server
+      - %$Logger  # your error logger (must implement psr/log interface)
+      - 64MB      # increases memory limit while indexing 
+
+```
+
+### Index configuration example:
+mysite/_config/search.yml
+```yaml
+
+# PageTypes
+
+Page:
+  extensions:
+    - Heyday\Elastica\Searchable
+  indexed_fields: &page_defaults
+    - Title
+    - MenuTitle
+    - Content
+    - MetaDescription
+    
+SpecialPageWithAdditionalFields:
+  extensions:
+    - Heyday\Elastica\Searchable # only needed if this page does not extend the 'Page' configured above
+  indexed_fields:
+    <<: *page_defaults
+    - BannerHeading
+    - BannerCopy
+    - SubHeading
+    
+SpecialPageWithRelatedDataObject:
+  extensions:
+    - Heyday\Elastica\Searchable
+  indexed_fields:
+    <<: *page_defaults
+    - RelatedDataObjects
+    
+RelatedDataObject:
+  extensions:
+    - Heyday\Elastica\Searchable
+  indexed_fields:
+    - Title
+    - SomeOtherField
+
+```
+
+### Custom field index configuration example:
+mysite/_config/search.yml
+```yaml
+
+# PageTypes
+
+Page:
+  extensions:
+    - Heyday\Elastica\Searchable
+  indexed_fields: 
+    - Title
+    SomeCustomFieldSimple:
+      type: string
+    SomeCustomFieldComplicatedConfig:
+      type: string
+      index_anayser: nGram_analyser
+      search_analyser: whitespace_analyser
+      stored: true
+
+```
+
+mysite/code/PageTypes/Page.php
+```php
+<?php
+
+class Page extends SiteTree
+{
+    public function getSomeCustomFieldSimple()
     {
-        private static $db = array(
-            "SomeField1" => "Varchar(255)",
-            "SomeField2"  => "Varchar(255)"
-        );
-        private static $searchable_fields = array(
-            "SomeField1",
-            "SomeField2"
-        );
+        return 'some dynamic text or something';
+    }
+    
+    public function getSomeCustomFieldComplicatedConfig()
+    {
+        return 'the config does not have anyting to do with me';
+    }
+}
+```
+
+### Simple search controller configuration/implementation example:
+mysite/_config/search.yml
+```yaml
+  SearchController:
+    properties:
+      SearchService: %$Heyday\Elastica\ElasticaService
+```
+
+mysite/code/Controllers/SearchController.php
+```php
+<?php
+
+class SearchController extends Page_Controller
+{
+    /**
+     * @var array
+     */
+    private static $allowed_actions = [
+        'index'
+    ];
+
+    /**
+     * @var \Heyday\Elastica\ElasticaService
+     */
+    protected $searchService;
+
+    /**
+     * Search results page action
+     *
+     * @return HTMLText
+     */
+    public function index()
+    {
+        return $this->renderWith(['SearchResults', 'Page']);
     }
 
-After every change to your data model you should execute the `SilverStripe-Elastica-ReindexTask`:
+    /**
+     * @param \Heyday\Elastica\ElasticaService $searchService
+     */
+    public function setSearchService(\Heyday\Elastica\ElasticaService $searchService)
+    {
+        $this->searchService = $searchService;
+    }
 
-    php framework/cli-script.php dev/tasks/SilverStripe-Elastica-ReindexTask
+    /**
+     * @return bool|\Heyday\Elastica\PaginatedList
+     */
+    public function Results()
+    {
+        $request = $this->getRequest();
+
+        if ($string = $request->requestVar('for')) {
+
+            $query = new \Elastica\Query\BoolQuery();
+
+            $query->addMust(
+                new \Elastica\Query\QueryString(strval($string))
+            );
+
+            $query->addMustNot([
+                new \Elastica\Query\Type('DataObjectThatShouldNotShowUpWithResults'),
+                new \Elastica\Query\Type('APageTypeThatShouldNotShowUpWithResults')
+            ]);
+
+            $results = $this->searchService->search($query);
+
+            return new \Heyday\Elastica\PaginatedList($results, $request);
+        }
+
+        return false;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function SearchString()
+    {
+        return Convert::raw2xml($this->getRequest()->requestVar('for'));
+    }
+}
+```
