@@ -15,6 +15,12 @@ This module is a fork of [SilverStripe's Elastica Module](https://github.com/sil
 * Can handle custom fields that are not in the database but only exist as part of an object instance
 * Infers ElasticSearch document field type from the database field type defined in the corresponding SilverStripe model
 
+## Compatibility
+
+This release is compatible with all elasticsearch 2.x releases.
+
+If you need to work with an earlier version of elasticsearch, please try the 0.0.1 release of this module
+
 ## Installation
 
 ```bash
