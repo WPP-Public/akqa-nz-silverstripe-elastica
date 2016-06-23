@@ -232,4 +232,4 @@ class SearchController extends Page_Controller
 ```
 ## License
 
-SilverStripe CacheInclude is released under the [MIT license](http://heyday.mit-license.org/)
+Heyday's SilverStripe Elastica is released under the [MIT license](http://heyday.mit-license.org/)
