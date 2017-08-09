@@ -230,6 +230,31 @@ class SearchController extends Page_Controller
     }
 }
 ```
+
+## Using Queues
+You can make use of queues to have your reindex processes run in the background.
+
+We use silverstripe-queuedjobs (https://github.com/symbiote/silverstripe-queuedjobs) and a job to reindex on publish has been created.
+
+To turn on queues, you will need the following config:
+```yaml
+Injector:
+  Heyday\Elastica\Searchable:
+    properties:
+      Queued: true
+```
+
+You will also need to set up a cronjob (I know not very queue-like...):
+
+Every minute to run the jobs in the queue
+```
+*/1 * * * * php /path/to/silverstripe/framework/cli-script.php dev/tasks/ProcessJobQueueTask
+```
+and to clean up the jobs, add the cleanup job once a day:
+```
+0 8 * * * php /path/to/silverstripe/framework/cli-script.php dev/tasks/CreateQueuedJobTask?name=CleanupJob
+```
+
 ## License
 
 Heyday's SilverStripe Elastica is released under the [MIT license](http://heyday.mit-license.org/)
