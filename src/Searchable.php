@@ -4,6 +4,7 @@ namespace Heyday\Elastica;
 
 use Elastica\Document;
 use Elastica\Type\Mapping;
+use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -44,6 +45,19 @@ class Searchable extends \DataExtension
      * @var ElasticaService
      */
     private $service;
+
+    /**
+     * @var bool
+     */
+    private $queued = false;
+
+    /**
+     * @param boolean $queued
+     */
+    public function setQueued($queued)
+    {
+        $this->queued = $queued;
+    }
 
     /**
      * @param ElasticaService $service
@@ -370,6 +384,19 @@ class Searchable extends \DataExtension
      * Updates the record in the search index, or removes it as necessary.
      */
     public function onAfterWrite()
+    {
+        if ($this->queued) {
+            $reindex = new ReindexAfterWriteJob($this->owner);
+            singleton('QueuedJobService')->queueJob($reindex);
+        } else {
+            $this->reIndex();
+        }
+    }
+
+    /**
+     * reIndex related content
+     */
+    public function reIndex()
     {
         $reading_mode = \Versioned::get_reading_mode();
         \Versioned::set_reading_mode('Stage.Live');
