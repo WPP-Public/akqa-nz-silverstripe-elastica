@@ -10,6 +10,3 @@ Injector:
       - %$Heyday\Elastica\ElasticaService
   ManyManyList:
     class: Heyday\Elastica\ManyManyList
-  QueuedJobService:
-    properties:
-      queueRunner: %$DoormanRunner
