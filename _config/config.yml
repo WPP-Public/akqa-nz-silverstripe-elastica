@@ -10,3 +10,6 @@ Injector:
       - %$Heyday\Elastica\ElasticaService
   ManyManyList:
     class: Heyday\Elastica\ManyManyList
+
+CleanupJob:
+  is_enabled: true
