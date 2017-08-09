@@ -250,9 +250,9 @@ Every minute to run the jobs in the queue
 ```
 */1 * * * * php /path/to/silverstripe/framework/cli-script.php dev/tasks/ProcessJobQueueTask
 ```
-and to clean up the jobs, add the cleanup job once a day:
+and to clean up the jobs, add the cleanup job once by running (it then gets automatically added to run once a day):
 ```
-0 8 * * * php /path/to/silverstripe/framework/cli-script.php dev/tasks/CreateQueuedJobTask?name=CleanupJob
+framework/sake dev/tasks/CreateQueuedJobTask?name=CleanupJob
 ```
 
 ## License
