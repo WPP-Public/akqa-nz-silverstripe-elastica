@@ -18,14 +18,15 @@ This module is a fork of [SilverStripe's Elastica Module](https://github.com/sil
 
 ## Compatibility
 
-This release is compatible with all elasticsearch 2.x releases.
+This release is compatible with all elasticsearch 5.x releases.
+This release requires SilverStripe 4.x
 
-If you need to work with an earlier version of elasticsearch, please try the 0.0.1 release of this module
+If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x), please try the 1.0 release of this module
 
 ## Installation
 
 ```bash
-$ composer require heyday/silverstripe-elastica:~1.0
+$ composer require heyday/silverstripe-elastica:~2.0
 ```
 
 ## Usage
