@@ -6,6 +6,7 @@ use Elastica\Document;
 use Elastica\Type\Mapping;
 use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
+use SilverStripe\Assets\File;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
@@ -108,6 +109,15 @@ class Searchable extends DataExtension
     }
 
     /**
+     * Replacing the SS3 inheritedDatabaseFields() method
+     * @return array
+     */
+    public function inheritedDatabaseFields()
+    {
+        return $this->owner::getSchema()->fieldSpecs($this->owner->getClassName());
+    }
+
+    /**
      * Gets an array of elastic field definitions.
      * This is also where we set the type of field ($spec['type']) and the analyzer for the field ($spec['analyzer']) if needed.
      * First we go through all the regular fields belonging to pages, then to the dataobjects related to those pages
@@ -123,6 +133,7 @@ class Searchable extends DataExtension
         );
     }
 
+
     /**
      * Get the searchable fields for the owner data object
      * @return array
@@ -135,7 +146,7 @@ class Searchable extends DataExtension
 
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
 
-            if (isset($params['type'])) {
+            if (isset($params['type'])) { // check if data type is manually set
 
                 $result[$fieldName] = $params;
 
@@ -143,7 +154,7 @@ class Searchable extends DataExtension
 
                 $fieldName = $params;
 
-                if (array_key_exists($fieldName, $fields)) {
+                if (array_key_exists($fieldName, $fields)) { // otherwise get it from $db
 
                     $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
 
@@ -161,37 +172,38 @@ class Searchable extends DataExtension
 
     /**
      * Get the searchable fields for the relationships of the owner data object
+     * Note we currently only go one layer down eg the property of the document can be Relation_RelationField
      * @return array
      */
     protected function getReferenceSearchableFields()
     {
         $result = array();
-
-        $relations = array_merge($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many());
+        $config = $this->owner->config();
+        $relations = array_merge($config->get('has_one'), $config->get('has_many'), $config->get('many_many'));
 
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
 
-            if (is_int($fieldName)) {
+            if (is_int($fieldName)) { // if non-associative array, use the key as fieldName
                 $fieldName = $params;
             }
 
-            if (array_key_exists($fieldName, $relations)) {
+            if (array_key_exists($fieldName, $relations)) { // we have an indexed field that's a relationship.
 
                 $className = $relations[$fieldName];
                 $related = singleton($className);
-                $fields = $related->inheritedDatabaseFields();
+                $fields = $related::getSchema()->fieldSpecs($related);
 
                 if ($related->hasExtension('Heyday\\Elastica\\Searchable')) {
 
                     foreach ($related->indexedFields() as $relatedFieldName => $relatedParams) {
 
-                        if (is_int($relatedFieldName)) {
+                        if (is_int($relatedFieldName)) { // if non-associative array, use the key as fieldName
                             $relatedFieldName = $relatedParams;
                         }
 
-                        $concatenatedFieldName = "{$fieldName}_{$relatedFieldName}";
+                        $concatenatedFieldName = "{$fieldName}_{$relatedFieldName}"; // eg. Book_Title
 
-                        if (isset($params[$relatedFieldName]['type'])) {
+                        if (isset($params[$relatedFieldName]['type'])) { //check if the data type is manually set
 
                             $result[$concatenatedFieldName] = $params[$relatedFieldName];
 
@@ -203,7 +215,7 @@ class Searchable extends DataExtension
 
                             $result[$concatenatedFieldName] = $relatedParams;
 
-                        } else if (array_key_exists($relatedFieldName, $fields)) {
+                        } else if (array_key_exists($relatedFieldName, $fields)) { //if not get the type from $db
 
                             $dataType = $this->stripDataTypeParameters($fields[$relatedFieldName]);
 
@@ -222,6 +234,7 @@ class Searchable extends DataExtension
     }
 
     /**
+     * Clean up the data type name
      * @param $dataType
      * @return string
      */
@@ -267,12 +280,12 @@ class Searchable extends DataExtension
     {
         $isLive = true;
         if ($this->owner->hasExtension('Versioned')) {
-            if ($this->owner instanceof \SiteTree) {
+            if ($this->owner instanceof SiteTree) {
                 $isLive = $this->owner->isPublished();
             }
         }
 
-        $document->set(self::$published_field, (bool) $isLive);
+        $document->set(self::$published_field, (bool)$isLive);
     }
 
     /**
@@ -297,8 +310,8 @@ class Searchable extends DataExtension
                 $this->setValue($config, $field, $document, $this->owner->$field);
 
             } else {
-
-                $possibleRelations = array_merge($this->owner->has_many(), $this->owner->has_one(), $this->owner->many_many());
+                $ownerConfig = $this->owner->config();
+                $possibleRelations = array_merge($ownerConfig->get('has_one'), $ownerConfig->get('has_many'), $ownerConfig->get('many_many'));
 
                 list($relation, $fieldName) = explode('_', $field);
 
@@ -306,9 +319,9 @@ class Searchable extends DataExtension
 
                     $related = $this->owner->$relation();
 
-                    if ($related instanceof \DataObject && $related->exists()) {
+                    if ($related instanceof DataObject && $related->exists()) {
 
-                        $possibleFields = $related->inheritedDatabaseFields();
+                        $possibleFields = $related::getSchema()->fieldSpecs($related);
 
                         if (array_key_exists($fieldName, $possibleFields)) {
 
@@ -327,19 +340,19 @@ class Searchable extends DataExtension
 
                             $file = $related->$fieldName();
 
-                            if ($file instanceof \File && $file->exists()) {
+                            if ($file instanceof File && $file->exists()) {
                                 $document->addFile($field, $file->getFullPath());
                             }
                         }
 
-                    } else if ($related instanceof \DataList && $related->count()) {
+                    } else if ($related instanceof DataList && $related->count()) {
 
                         $relatedData = [];
 
                         foreach ($related as $relatedItem) {
                             $data = null;
 
-                            $possibleFields = $relatedItem->inheritedDatabaseFields();
+                            $possibleFields = $relatedItem::getSchema()->fieldSpecs($relatedItem);
 
                             if (array_key_exists($fieldName, $possibleFields) ||
                                 $related->hasMethod('get' . $fieldName)
@@ -362,7 +375,7 @@ class Searchable extends DataExtension
                                 } else {
                                     $file = $relatedItem->$fieldName();
 
-                                    if ($file instanceof \File && $file->exists()) {
+                                    if ($file instanceof File && $file->exists()) {
                                         $data = base64_encode(file_get_contents($file->getFullPath()));
                                     }
 
@@ -456,7 +469,7 @@ class Searchable extends DataExtension
     protected function updateDependentClasses()
     {
         $classes = $this->dependentClasses();
-        if($classes) {
+        if ($classes) {
             foreach ($classes as $class) {
                 $list = DataList::create($class);
 

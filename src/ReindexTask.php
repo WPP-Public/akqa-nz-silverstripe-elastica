@@ -19,11 +19,18 @@ class ReindexTask extends BuildTask
      */
     private $service;
 
+    /**
+     * ReindexTask constructor.
+     * @param ElasticaService $service
+     */
     public function __construct(ElasticaService $service)
     {
         $this->service = $service;
     }
 
+    /**
+     * @param \SilverStripe\Control\HTTPRequest $request
+     */
     public function run($request)
     {
         $message = function ($content) {

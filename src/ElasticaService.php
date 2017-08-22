@@ -7,6 +7,7 @@ use Elastica\Exception\NotFoundException;
 use Elastica\Query;
 use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Versioned\Versioned;
@@ -223,10 +224,19 @@ class ElasticaService
                     (!$record instanceof SiteTree && !$record->hasMethod('getShowInSearch'))
                 ) {
                     $this->index($record);
-                    print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
+                    if (Director::is_cli()) {
+                        print "INDEXED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
+                    } else {
+                        print "<strong>INDEXED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                    }
+
                 } else {
                     $this->remove($record);
-                    print "<strong>REMOVED: </strong> " . $record->getTitle() . "<br>\n";
+                    if (Director::is_cli()) {
+                        print "REMOVED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
+                    } else {
+                        print "<strong>REMOVED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                    }
                 }
             }
         }
@@ -241,14 +251,12 @@ class ElasticaService
     public function getIndexedClasses()
     {
         $classes = array();
-
-        foreach (ClassInfo::subclassesFor('DataObject') as $candidate) {
+        foreach (ClassInfo::subclassesFor('SilverStripe\ORM\DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
-            if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable')) {
+            if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable') && $candidate != 'Page') {
                 $classes[] = $candidate;
             }
         }
-
         return $classes;
     }
 
