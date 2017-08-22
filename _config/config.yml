@@ -1,7 +1,7 @@
 ---
 Name: Heyday Elastica Config
 ---
-Injector:
+SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\ReindexTask:
     constructor:
       - %$Heyday\Elastica\ElasticaService
@@ -11,5 +11,5 @@ Injector:
   ManyManyList:
     class: Heyday\Elastica\ManyManyList
 
-CleanupJob:
+Symbiote\QueuedJobs\Jobs\CleanupJob:
   is_enabled: true

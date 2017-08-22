@@ -6,11 +6,16 @@ use Elastica\Document;
 use Elastica\Type\Mapping;
 use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\ORM\DataExtension;
+use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\Versioned\Versioned;
 
 /**
  * Adds elastic search integration to a data object.
  */
-class Searchable extends \DataExtension
+class Searchable extends DataExtension
 {
     public static $published_field = 'SS_Published';
 
@@ -398,17 +403,17 @@ class Searchable extends \DataExtension
      */
     public function reIndex()
     {
-        $reading_mode = \Versioned::get_reading_mode();
-        \Versioned::set_reading_mode('Stage.Live');
+        $reading_mode = Versioned::get_reading_mode();
+        Versioned::set_reading_mode('Stage.Live');
 
-        $versionToIndex = \DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
+        $versionToIndex = DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
         if (is_null($versionToIndex)) {
             $versionToIndex = $this->owner;
         }
 
-        if (($versionToIndex instanceof \SiteTree && $versionToIndex->ShowInSearch) ||
-            (!$versionToIndex instanceof \SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
-            (!$versionToIndex instanceof \SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
+        if (($versionToIndex instanceof SiteTree && $versionToIndex->ShowInSearch) ||
+            (!$versionToIndex instanceof SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
+            (!$versionToIndex instanceof SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
         ) {
             $this->service->index($versionToIndex);
         } else {
@@ -417,7 +422,7 @@ class Searchable extends \DataExtension
 
         $this->updateDependentClasses();
 
-        \Versioned::set_reading_mode($reading_mode);
+        Versioned::set_reading_mode($reading_mode);
     }
 
     /**
@@ -453,15 +458,15 @@ class Searchable extends \DataExtension
         $classes = $this->dependentClasses();
         if($classes) {
             foreach ($classes as $class) {
-                $list = \DataList::create($class);
+                $list = DataList::create($class);
 
                 foreach ($list as $object) {
 
-                    if ($object instanceof \DataObject &&
+                    if ($object instanceof DataObject &&
                         $object->hasExtension('Heyday\\Elastica\\Searchable')
                     ) {
-                        if (($object instanceof \SiteTree && $object->ShowInSearch) ||
-                            (!$object instanceof \SiteTree)
+                        if (($object instanceof SiteTree && $object->ShowInSearch) ||
+                            (!$object instanceof SiteTree)
                         ) {
                             $this->service->index($object);
                         } else {

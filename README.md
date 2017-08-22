@@ -54,7 +54,7 @@ Heyday\Elastica\ElasticaService: # Example of customising the index config on th
 Only:
   environment: dev
 ---
-Injector:
+SilverStripe\Core\Injector\Injector:
   Elastica\Client:
     constructor:
       - host: localhost # hostname of the elastic search server
@@ -75,7 +75,7 @@ mysite/_config/search.yml
 
 # PageTypes
 
-Page:
+Your\Namespace\Page:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields: &page_defaults
@@ -84,7 +84,7 @@ Page:
     - Content
     - MetaDescription
     
-SpecialPageWithAdditionalFields:
+Your\Namespace\SpecialPageWithAdditionalFields:
   extensions:
     - Heyday\Elastica\Searchable # only needed if this page does not extend the 'Page' configured above
   indexed_fields:
@@ -93,14 +93,14 @@ SpecialPageWithAdditionalFields:
     - BannerCopy
     - SubHeading
     
-SpecialPageWithRelatedDataObject:
+Your\Namespace\SpecialPageWithRelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields:
     <<: *page_defaults
     - RelatedDataObjects
     
-RelatedDataObject:
+Your\Namespace\RelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields:
@@ -117,7 +117,7 @@ mysite/_config/search.yml
 
 # PageTypes
 
-Page:
+Your\Namespace\Page:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields: 
@@ -239,7 +239,7 @@ We use silverstripe-queuedjobs (https://github.com/symbiote/silverstripe-queuedj
 
 To turn on queues, you will need the following config:
 ```yaml
-Injector:
+SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\Searchable:
     properties:
       Queued: true

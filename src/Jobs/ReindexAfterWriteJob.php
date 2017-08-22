@@ -2,6 +2,14 @@
 
 namespace Heyday\Elastica\Jobs;
 
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\Versioned\Versioned;
+use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
+use Symbiote\QueuedJobs\Services\QueuedJob;
+
 
 /**
  * Created by PhpStorm.
@@ -9,7 +17,7 @@ namespace Heyday\Elastica\Jobs;
  * Date: 9/08/17
  * Time: 10:06 AM
  */
-class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
+class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
 
     /**
@@ -24,7 +32,7 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
             $this->owner = $owner;
         }
 
-        $this->service = \Injector::inst()->get('Heyday\Elastica\ElasticaService');
+        $this->service = Injector::inst()->get('Heyday\Elastica\ElasticaService');
     }
 
 
@@ -51,7 +59,7 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
     public function getJobType()
     {
         $this->totalSteps = 'Lots';
-        return \QueuedJob::QUEUED;
+        return QueuedJob::QUEUED;
     }
 
 
@@ -61,17 +69,17 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
     public function process()
     {
         if ($this->owner && $this->service) {
-            $reading_mode = \Versioned::get_reading_mode();
-            \Versioned::set_reading_mode('Stage.Live');
+            $reading_mode = Versioned::get_reading_mode();
+            Versioned::set_reading_mode('Stage.Live');
 
-            $versionToIndex = \DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
+            $versionToIndex = DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
             if (is_null($versionToIndex)) {
                 $versionToIndex = $this->owner;
             }
 
-            if (($versionToIndex instanceof \SiteTree && $versionToIndex->ShowInSearch) ||
-                (!$versionToIndex instanceof \SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
-                (!$versionToIndex instanceof \SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
+            if (($versionToIndex instanceof SiteTree && $versionToIndex->ShowInSearch) ||
+                (!$versionToIndex instanceof SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
+                (!$versionToIndex instanceof SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
             ) {
                 $this->service->index($versionToIndex);
             } else {
@@ -80,7 +88,7 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
 
             $this->updateDependentClasses();
 
-            \Versioned::set_reading_mode($reading_mode);
+            Versioned::set_reading_mode($reading_mode);
             $this->isComplete = true;
             return;
         } else {
@@ -96,15 +104,15 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
         $classes = $this->dependentClasses();
         if ($classes) {
             foreach ($classes as $class) {
-                $list = \DataList::create($class);
+                $list = DataList::create($class);
 
                 foreach ($list as $object) {
 
-                    if ($object instanceof \DataObject &&
+                    if ($object instanceof DataObject &&
                         $object->hasExtension('Heyday\\Elastica\\Searchable')
                     ) {
-                        if (($object instanceof \SiteTree && $object->ShowInSearch) ||
-                            (!$object instanceof \SiteTree)
+                        if (($object instanceof SiteTree && $object->ShowInSearch) ||
+                            (!$object instanceof SiteTree)
                         ) {
                             $this->service->index($object);
                         } else {

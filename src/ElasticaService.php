@@ -6,12 +6,17 @@ use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
 use Psr\Log\LoggerInterface;
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Versioned\Versioned;
 
 /**
  * A service used to interact with elastic search.
  */
-class ElasticaService extends \Object
+class ElasticaService
 {
+    use Configurable;
 
     /**
      * @var Client
@@ -205,17 +210,17 @@ class ElasticaService extends \Object
      */
     public function refresh()
     {
-        $reading_mode = \Versioned::get_reading_mode();
-        \Versioned::set_reading_mode('Stage.Live');
+        $reading_mode = Versioned::get_reading_mode();
+        Versioned::set_reading_mode('Stage.Live');
 
         foreach ($this->getIndexedClasses() as $class) {
             foreach ($class::get() as $record) {
 
                 //Only index records with Show In Search enabled for Site Tree descendants
                 //otherwise index all other data objects
-                if (($record instanceof \SiteTree && $record->ShowInSearch) ||
-                    (!$record instanceof \SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
-                    (!$record instanceof \SiteTree && !$record->hasMethod('getShowInSearch'))
+                if (($record instanceof SiteTree && $record->ShowInSearch) ||
+                    (!$record instanceof SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
+                    (!$record instanceof SiteTree && !$record->hasMethod('getShowInSearch'))
                 ) {
                     $this->index($record);
                     print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
@@ -225,7 +230,7 @@ class ElasticaService extends \Object
                 }
             }
         }
-        \Versioned::set_reading_mode($reading_mode);
+        Versioned::set_reading_mode($reading_mode);
     }
 
     /**
@@ -237,7 +242,7 @@ class ElasticaService extends \Object
     {
         $classes = array();
 
-        foreach (\ClassInfo::subclassesFor('DataObject') as $candidate) {
+        foreach (ClassInfo::subclassesFor('DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
             if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable')) {
                 $classes[] = $candidate;

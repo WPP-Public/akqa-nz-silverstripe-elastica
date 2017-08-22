@@ -1,11 +1,13 @@
 <?php
 
 namespace Heyday\Elastica;
+use SilverStripe\Control\Director;
+use SilverStripe\Dev\BuildTask;
 
 /**
  * Defines and refreshes the elastic search index.
  */
-class ReindexTask extends \BuildTask
+class ReindexTask extends BuildTask
 {
 
     protected $title = 'Elastic Search Reindex';
@@ -25,7 +27,7 @@ class ReindexTask extends \BuildTask
     public function run($request)
     {
         $message = function ($content) {
-            print(\Director::is_cli() ? "$content\n" : "<p>$content</p>");
+            print(Director::is_cli() ? "$content\n" : "<p>$content</p>");
         };
 
         $message('Defining the mappings');
