@@ -1,10 +1,4 @@
 {
-	"repositories": [
-	{
-		"type": "vcs",
-		"url": "https://github.com/heyday/silverstripe-queuedjobs/"
-	}
-	],
 	"name": "heyday/silverstripe-elastica",
 	"description": "Provides Elastic Search integration for SilverStripe DataObjects using Elastica",
 	"type": "silverstripe-module",
@@ -35,7 +29,7 @@
 	"require": {
 		"php": ">=5.6.0",
 		"ruflin/elastica": "~5.3",
-		"symbiote/silverstripe-queuedjobs": "dev-softer-silverstripe-admin-reqs"
+		"symbiote/silverstripe-queuedjobs": "~4.0"
 	},
 	"autoload": {
 		"psr-4": { "Heyday\\Elastica\\": "src/" }
