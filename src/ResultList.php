@@ -7,13 +7,14 @@ use Elastica\Query;
 use Elastica\ResultSet;
 use Psr\Log\LoggerInterface;
 use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\SS_List;
 use SilverStripe\Versioned\Versioned;
 use SilverStripe\View\ViewableData;
 
 /**
  * A list wrapper around the results from a query. Note that not all operations are implemented.
  */
-class ResultList extends ViewableData
+class ResultList extends ViewableData implements SS_List
 {
 
     /**
@@ -35,7 +36,7 @@ class ResultList extends ViewableData
     public function __construct(Index $index, Query $query, LoggerInterface $logger = null)
     {
         //Optimise the query by just getting back the ids and types
-        $query->setFields(array(
+        $query->setStoredFields(array(
             '_id',
             '_type'
         ));

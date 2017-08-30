@@ -93,7 +93,7 @@ class ElasticaService
      * @param \Elastica\Query|string|array $query
      * @param array $options Options defined in \Elastica\Search
      * @param bool $returnResultList
-     * @return ResultList
+     * @return ResultList | \Elastica\ResultSet
      */
     public function search($query, $options = null, $returnResultList = true)
     {
