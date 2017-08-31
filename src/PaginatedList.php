@@ -2,7 +2,7 @@
 
 namespace Heyday\Elastica;
 
-class PaginatedList extends \PaginatedList
+class PaginatedList extends \SilverStripe\ORM\PaginatedList
 {
     /**
      * Returns the total number of items in the unpaginated list.

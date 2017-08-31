@@ -2,6 +2,14 @@
 
 namespace Heyday\Elastica\Jobs;
 
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\Injector\Injector;
+use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\Versioned\Versioned;
+use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
+use Symbiote\QueuedJobs\Services\QueuedJob;
+
 
 /**
  * Created by PhpStorm.
@@ -9,22 +17,24 @@ namespace Heyday\Elastica\Jobs;
  * Date: 9/08/17
  * Time: 10:06 AM
  */
-class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
+class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
 
     /**
      *
      * get the instance to reindex and the service
      * ReindexAfterWriteJob constructor.
-     * @param null $owner
+     * @param null $id
+     * @param null $class
      */
-    public function __construct($owner = null)
+    public function __construct($id = null, $class = null)
     {
-        if ($owner) {
-            $this->owner = $owner;
+        if ($id) {
+            $this->id = $id;
         }
-
-        $this->service = \Injector::inst()->get('Heyday\Elastica\ElasticaService');
+        if ($class) {
+            $this->class = $class;
+        }
     }
 
 
@@ -35,7 +45,7 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
      */
     public function getTitle()
     {
-        return "Reindexing " . $this->owner->ClassName . " ID " . $this->owner->ID;
+        return "Reindexing " . $this->class . " ID " . $this->id;
     }
 
     /**
@@ -51,7 +61,7 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
     public function getJobType()
     {
         $this->totalSteps = 'Lots';
-        return \QueuedJob::QUEUED;
+        return QueuedJob::QUEUED;
     }
 
 
@@ -60,27 +70,26 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
      */
     public function process()
     {
-        if ($this->owner && $this->service) {
-            $reading_mode = \Versioned::get_reading_mode();
-            \Versioned::set_reading_mode('Stage.Live');
+        if ($this->id && $this->class) {
 
-            $versionToIndex = \DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
-            if (is_null($versionToIndex)) {
-                $versionToIndex = $this->owner;
-            }
+            $service = Injector::inst()->get('Heyday\Elastica\ElasticaService');
+            $reading_mode = Versioned::get_reading_mode();
+            Versioned::set_reading_mode('Stage.Live');
 
-            if (($versionToIndex instanceof \SiteTree && $versionToIndex->ShowInSearch) ||
-                (!$versionToIndex instanceof \SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
-                (!$versionToIndex instanceof \SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
+            $versionToIndex = DataObject::get($this->class)->byID($this->id);
+
+            if (($versionToIndex instanceof SiteTree && $versionToIndex->ShowInSearch) ||
+                (!$versionToIndex instanceof SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
+                (!$versionToIndex instanceof SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
             ) {
-                $this->service->index($versionToIndex);
+                $service->index($versionToIndex);
             } else {
-                $this->service->remove($versionToIndex);
+                $service->remove($versionToIndex);
             }
 
-            $this->updateDependentClasses();
+            $this->updateDependentClasses($versionToIndex, $service);
 
-            \Versioned::set_reading_mode($reading_mode);
+            Versioned::set_reading_mode($reading_mode);
             $this->isComplete = true;
             return;
         } else {
@@ -91,24 +100,24 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
     /**
      * Updates the records of all instances of dependent classes.
      */
-    protected function updateDependentClasses()
+    protected function updateDependentClasses($versionToIndex, $service)
     {
-        $classes = $this->dependentClasses();
+        $classes = $this->dependentClasses($versionToIndex);
         if ($classes) {
             foreach ($classes as $class) {
-                $list = \DataList::create($class);
+                $list = DataList::create($class);
 
                 foreach ($list as $object) {
 
-                    if ($object instanceof \DataObject &&
+                    if ($object instanceof DataObject &&
                         $object->hasExtension('Heyday\\Elastica\\Searchable')
                     ) {
-                        if (($object instanceof \SiteTree && $object->ShowInSearch) ||
-                            (!$object instanceof \SiteTree)
+                        if (($object instanceof SiteTree && $object->ShowInSearch) ||
+                            (!$object instanceof SiteTree)
                         ) {
-                            $this->service->index($object);
+                            $service->index($object);
                         } else {
-                            $this->service->remove($object);
+                            $service->remove($object);
                         }
                     }
                 }
@@ -121,8 +130,8 @@ class ReindexAfterWriteJob extends \AbstractQueuedJob implements \QueuedJob
      * extended class is updated or when a relationship to it changes.
      * @return array|\scalar
      */
-    public function dependentClasses()
+    public function dependentClasses($versionToIndex)
     {
-        return $this->owner->stat('dependent_classes');
+        return $versionToIndex->stat('dependent_classes');
     }
 }

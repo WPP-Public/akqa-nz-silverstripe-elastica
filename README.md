@@ -18,14 +18,15 @@ This module is a fork of [SilverStripe's Elastica Module](https://github.com/sil
 
 ## Compatibility
 
-This release is compatible with all elasticsearch 2.x releases.
+This release is compatible with all elasticsearch 5.x releases.
+This release requires SilverStripe 4.x
 
-If you need to work with an earlier version of elasticsearch, please try the 0.0.1 release of this module
+If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x), please try the 1.0 release of this module
 
 ## Installation
 
 ```bash
-$ composer require heyday/silverstripe-elastica:~1.0
+$ composer require heyday/silverstripe-elastica:~2.0
 ```
 
 ## Usage
@@ -53,7 +54,7 @@ Heyday\Elastica\ElasticaService: # Example of customising the index config on th
 Only:
   environment: dev
 ---
-Injector:
+SilverStripe\Core\Injector\Injector:
   Elastica\Client:
     constructor:
       - host: localhost # hostname of the elastic search server
@@ -74,7 +75,7 @@ mysite/_config/search.yml
 
 # PageTypes
 
-Page:
+Your\Namespace\Page:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields: &page_defaults
@@ -83,7 +84,7 @@ Page:
     - Content
     - MetaDescription
     
-SpecialPageWithAdditionalFields:
+Your\Namespace\SpecialPageWithAdditionalFields:
   extensions:
     - Heyday\Elastica\Searchable # only needed if this page does not extend the 'Page' configured above
   indexed_fields:
@@ -92,14 +93,14 @@ SpecialPageWithAdditionalFields:
     - BannerCopy
     - SubHeading
     
-SpecialPageWithRelatedDataObject:
+Your\Namespace\SpecialPageWithRelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields:
     <<: *page_defaults
     - RelatedDataObjects
     
-RelatedDataObject:
+Your\Namespace\RelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields:
@@ -116,7 +117,7 @@ mysite/_config/search.yml
 
 # PageTypes
 
-Page:
+Your\Namespace\Page:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields: 
@@ -238,7 +239,7 @@ We use silverstripe-queuedjobs (https://github.com/symbiote/silverstripe-queuedj
 
 To turn on queues, you will need the following config:
 ```yaml
-Injector:
+SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\Searchable:
     properties:
       Queued: true
@@ -252,7 +253,7 @@ Every minute to run the jobs in the queue
 ```
 and to clean up the jobs, add the cleanup job once by running (it then gets automatically added to run once a day):
 ```
-framework/sake dev/tasks/CreateQueuedJobTask?name=CleanupJob
+framework/sake dev/tasks/CreateQueuedJobTask?name=Symbiote\QueuedJobs\Jobs\CleanupJob
 ```
 
 ## License

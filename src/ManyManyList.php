@@ -2,7 +2,9 @@
 
 namespace Heyday\Elastica;
 
-use \ManyManyList as SilverStripeManyManyList;
+use SilverStripe\ORM\DataList;
+use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\ManyManyList as SilverStripeManyManyList;
 
 /**
  * A drop in replacement for the default ManyManyList.
@@ -20,11 +22,11 @@ class ManyManyList extends SilverStripeManyManyList
     {
         parent::add($item, $extraFields);
 
-        if (!$item instanceof \DataObject) {
-            $item = \DataList::create($this->dataClass)->byId($item);
+        if (!$item instanceof DataObject) {
+            $item = DataList::create($this->dataClass)->byId($item);
         }
 
-        if ($item instanceof \DataObject) {
+        if ($item instanceof DataObject) {
             $item->extend('onAfterManyManyRelationAdd');
         }
     }
@@ -36,7 +38,7 @@ class ManyManyList extends SilverStripeManyManyList
     {
         $result = parent::removeByID($itemID);
 
-        $item = \DataList::create($this->dataClass)->byId($itemID);
+        $item = DataList::create($this->dataClass)->byId($itemID);
 
         if ($item instanceof $this->dataClass) {
             $item->extend('onAfterManyManyRelationRemove');
@@ -45,14 +47,16 @@ class ManyManyList extends SilverStripeManyManyList
         return $result;
     }
 
+    /**
+     *
+     */
     public function removeAll()
     {
         parent::removeAll();
 
-        $items = \DataList::create($this->dataClass);
+        $items = DataList::create($this->dataClass);
 
-        foreach ($items as $item)
-        {
+        foreach ($items as $item) {
             $item->extend('onAfterManyManyRelationRemove');
         }
     }

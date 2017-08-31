@@ -6,14 +6,24 @@ use Elastica\Index;
 use Elastica\Query;
 use Elastica\ResultSet;
 use Psr\Log\LoggerInterface;
+use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\SS_List;
+use SilverStripe\Versioned\Versioned;
+use SilverStripe\View\ViewableData;
 
 /**
  * A list wrapper around the results from a query. Note that not all operations are implemented.
  */
-class ResultList extends \ViewableData implements \SS_Limitable
+class ResultList extends ViewableData implements SS_List
 {
 
+    /**
+     * @var Index
+     */
     private $index;
+    /**
+     * @var Query
+     */
     private $query;
     private $logger;
     private $resultsArray;
@@ -26,13 +36,13 @@ class ResultList extends \ViewableData implements \SS_Limitable
     public function __construct(Index $index, Query $query, LoggerInterface $logger = null)
     {
         //Optimise the query by just getting back the ids and types
-        $query->setFields(array(
+        $query->setStoredFields(array(
             '_id',
             '_type'
         ));
 
         //If we are in live reading mode, only return published documents
-        if (\Versioned::get_reading_mode() == \Versioned::DEFAULT_MODE) {
+        if (Versioned::get_reading_mode() == Versioned::DEFAULT_MODE) {
             $publishedFilter = new Query\BoolQuery();
             $publishedFilter->addMust(new Query\Term([Searchable::$published_field => 'true']));
             $query->setPostFilter($publishedFilter);
@@ -43,6 +53,9 @@ class ResultList extends \ViewableData implements \SS_Limitable
         $this->logger = $logger;
     }
 
+    /**
+     *
+     */
     public function __clone()
     {
         $this->query = clone $this->query;
@@ -113,7 +126,7 @@ class ResultList extends \ViewableData implements \SS_Limitable
     /**
      * @param $limit
      * @param int $offset
-     * @return ResultList|\SS_Limitable
+     * @return ResultList
      */
     public function limit($limit, $offset = 0)
     {
@@ -186,11 +199,17 @@ class ResultList extends \ViewableData implements \SS_Limitable
         return $this->resultsArray;
     }
 
+    /**
+     * @return ArrayList
+     */
     public function toArrayList()
     {
-        return new \ArrayList($this->toArray());
+        return new ArrayList($this->toArray());
     }
 
+    /**
+     * @return array
+     */
     public function toNestedArray()
     {
         $result = array();
@@ -202,22 +221,37 @@ class ResultList extends \ViewableData implements \SS_Limitable
         return $result;
     }
 
+    /**
+     * @return mixed
+     */
     public function first()
     {
         return reset($this->toArray());
     }
 
+    /**
+     * @return mixed
+     */
     public function last()
     {
         return array_pop($this->toArray());
     }
 
 
+    /**
+     * @param string $key
+     * @param string $title
+     * @return \SilverStripe\ORM\Map
+     */
     public function map($key = 'ID', $title = 'Title')
     {
         return $this->toArrayList()->map($key, $title);
     }
 
+    /**
+     * @param string $col
+     * @return array
+     */
     public function column($col = 'ID')
     {
         if ($col == 'ID') {
@@ -233,16 +267,26 @@ class ResultList extends \ViewableData implements \SS_Limitable
         }
     }
 
+    /**
+     * @param $callback
+     * @return $this
+     */
     public function each($callback)
     {
         return $this->toArrayList()->each($callback);
     }
 
+    /**
+     * @return int
+     */
     public function count()
     {
         return count($this->toArray());
     }
 
+    /**
+     * @return int
+     */
     public function totalItems()
     {
         return $this->getResults()->getTotalHits();

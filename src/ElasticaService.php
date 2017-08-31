@@ -6,12 +6,18 @@ use Elastica\Client;
 use Elastica\Exception\NotFoundException;
 use Elastica\Query;
 use Psr\Log\LoggerInterface;
+use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Control\Director;
+use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Versioned\Versioned;
 
 /**
  * A service used to interact with elastic search.
  */
-class ElasticaService extends \Object
+class ElasticaService
 {
+    use Configurable;
 
     /**
      * @var Client
@@ -87,7 +93,7 @@ class ElasticaService extends \Object
      * @param \Elastica\Query|string|array $query
      * @param array $options Options defined in \Elastica\Search
      * @param bool $returnResultList
-     * @return ResultList
+     * @return ResultList | \Elastica\ResultSet
      */
     public function search($query, $options = null, $returnResultList = true)
     {
@@ -205,27 +211,36 @@ class ElasticaService extends \Object
      */
     public function refresh()
     {
-        $reading_mode = \Versioned::get_reading_mode();
-        \Versioned::set_reading_mode('Stage.Live');
+        $reading_mode = Versioned::get_reading_mode();
+        Versioned::set_reading_mode('Stage.Live');
 
         foreach ($this->getIndexedClasses() as $class) {
             foreach ($class::get() as $record) {
 
                 //Only index records with Show In Search enabled for Site Tree descendants
                 //otherwise index all other data objects
-                if (($record instanceof \SiteTree && $record->ShowInSearch) ||
-                    (!$record instanceof \SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
-                    (!$record instanceof \SiteTree && !$record->hasMethod('getShowInSearch'))
+                if (($record instanceof SiteTree && $record->ShowInSearch) ||
+                    (!$record instanceof SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
+                    (!$record instanceof SiteTree && !$record->hasMethod('getShowInSearch'))
                 ) {
                     $this->index($record);
-                    print "<strong>INDEXED: </strong> " . $record->getTitle() . "<br>\n";
+                    if (Director::is_cli()) {
+                        print "INDEXED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
+                    } else {
+                        print "<strong>INDEXED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                    }
+
                 } else {
                     $this->remove($record);
-                    print "<strong>REMOVED: </strong> " . $record->getTitle() . "<br>\n";
+                    if (Director::is_cli()) {
+                        print "REMOVED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
+                    } else {
+                        print "<strong>REMOVED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                    }
                 }
             }
         }
-        \Versioned::set_reading_mode($reading_mode);
+        Versioned::set_reading_mode($reading_mode);
     }
 
     /**
@@ -236,14 +251,12 @@ class ElasticaService extends \Object
     public function getIndexedClasses()
     {
         $classes = array();
-
-        foreach (\ClassInfo::subclassesFor('DataObject') as $candidate) {
+        foreach (ClassInfo::subclassesFor('SilverStripe\ORM\DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
-            if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable')) {
+            if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable') && $candidate != 'Page') {
                 $classes[] = $candidate;
             }
         }
-
         return $classes;
     }
 
