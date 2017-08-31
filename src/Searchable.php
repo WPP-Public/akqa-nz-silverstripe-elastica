@@ -404,7 +404,7 @@ class Searchable extends DataExtension
     public function onAfterWrite()
     {
         if ($this->queued) {
-            $reindex = new ReindexAfterWriteJob($this->owner);
+            $reindex = new ReindexAfterWriteJob($this->owner->ID, $this->owner->ClassName);
             singleton('Symbiote\QueuedJobs\Services\QueuedJobService')->queueJob($reindex);
         } else {
             $this->reIndex();

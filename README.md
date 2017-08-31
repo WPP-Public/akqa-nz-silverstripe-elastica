@@ -253,7 +253,7 @@ Every minute to run the jobs in the queue
 ```
 and to clean up the jobs, add the cleanup job once by running (it then gets automatically added to run once a day):
 ```
-framework/sake dev/tasks/CreateQueuedJobTask?name=CleanupJob
+framework/sake dev/tasks/CreateQueuedJobTask?name=Symbiote\QueuedJobs\Jobs\CleanupJob
 ```
 
 ## License
