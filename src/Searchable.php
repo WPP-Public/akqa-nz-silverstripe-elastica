@@ -426,7 +426,12 @@ class Searchable extends \DataExtension
     public function onAfterDelete()
     {
         $this->service->remove($this->owner);
-        $this->updateDependentClasses();
+        if ($this->queued) {
+            $reindex = new ReindexAfterWriteJob($this->owner);
+            singleton('QueuedJobService')->queueJob($reindex);
+        } else {
+            $this->updateDependentClasses();
+        }
     }
 
     /**
@@ -434,7 +439,12 @@ class Searchable extends \DataExtension
      */
     public function onAfterManyManyRelationRemove()
     {
-        $this->updateDependentClasses();
+        if ($this->queued) {
+            $reindex = new ReindexAfterWriteJob($this->owner);
+            singleton('QueuedJobService')->queueJob($reindex);
+        } else {
+            $this->updateDependentClasses();
+        }
     }
 
     /**
@@ -442,7 +452,12 @@ class Searchable extends \DataExtension
      */
     public function onAfterManyManyRelationAdd()
     {
-        $this->updateDependentClasses();
+        if ($this->queued) {
+            $reindex = new ReindexAfterWriteJob($this->owner);
+            singleton('QueuedJobService')->queueJob($reindex);
+        } else {
+            $this->updateDependentClasses();
+        }
     }
 
     /**
