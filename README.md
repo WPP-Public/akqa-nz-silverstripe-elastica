@@ -122,13 +122,16 @@ Your\Namespace\Page:
     - Heyday\Elastica\Searchable
   indexed_fields: 
     - Title
-    SomeCustomFieldSimple:
-      type: string
-    SomeCustomFieldComplicatedConfig:
-      type: string
-      index_anayser: nGram_analyser
-      search_analyser: whitespace_analyser
-      stored: true
+    - SomeOtherField
+    -
+      SomeCustomFieldSimple:
+        type: string
+    -
+      SomeCustomFieldComplicatedConfig:
+        type: string
+        index_anayser: nGram_analyser
+        search_analyser: whitespace_analyser
+        stored: true
 
 ```
 

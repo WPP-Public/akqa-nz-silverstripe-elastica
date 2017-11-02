@@ -144,15 +144,13 @@ class Searchable extends DataExtension
 
         $fields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->stat('fixed_fields'));
 
-        foreach ($this->owner->indexedFields() as $fieldName => $params) {
+        foreach ($this->owner->indexedFields() as $key => $fieldName) {
 
-            if (isset($params['type'])) { // check if data type is manually set
+            if (is_array($fieldName)) { // check if data type is manually set
 
-                $result[$fieldName] = $params;
+                $result[key($fieldName)] = $fieldName[key($fieldName)];
 
             } else {
-
-                $fieldName = $params;
 
                 if (array_key_exists($fieldName, $fields)) { // otherwise get it from $db
 
@@ -187,8 +185,11 @@ class Searchable extends DataExtension
                 $fieldName = $params;
             }
 
-            if (array_key_exists($fieldName, $relations)) { // we have an indexed field that's a relationship.
+            if (is_array($fieldName)) {
+                $fieldName = key($fieldName);
+            }
 
+            if (array_key_exists($fieldName, $relations)) { // we have an indexed field that's a relationship.
                 $className = $relations[$fieldName];
                 $related = singleton($className);
                 $fields = $related::getSchema()->fieldSpecs($related);
