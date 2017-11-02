@@ -198,7 +198,7 @@ class SearchController extends Page_Controller
     }
 
     /**
-     * @return bool|\Heyday\Elastica\PaginatedList
+     * @return bool|\SilverStripe\ORM\PaginatedList
      */
     public function Results()
     {
@@ -219,7 +219,7 @@ class SearchController extends Page_Controller
 
             $results = $this->searchService->search($query);
 
-            return new \Heyday\Elastica\PaginatedList($results, $request);
+            return new \SilverStripe\ORM\PaginatedList($results, $request);
         }
 
         return false;
