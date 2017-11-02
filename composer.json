@@ -1,7 +1,7 @@
 {
 	"name": "heyday/silverstripe-elastica",
 	"description": "Provides Elastic Search integration for SilverStripe DataObjects using Elastica",
-	"type": "silverstripe-module",
+	"type": "silverstripe-vendormodule",
 	"homepage": "http://github.com/heyday/silverstripe-elastica",
 	"keywords": ["silverstripe", "search", "elasticsearch", "elastica"],
 	"license": "BSD-3-Clause",
