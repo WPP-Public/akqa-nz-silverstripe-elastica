@@ -85,7 +85,7 @@ class ElasticaService
      */
     protected function getIndexConfig()
     {
-        return $this->stat('index_config');
+        return $this->config()->get('index_config');
     }
 
     /**
