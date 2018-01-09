@@ -122,13 +122,16 @@ Your\Namespace\Page:
     - Heyday\Elastica\Searchable
   indexed_fields: 
     - Title
-    SomeCustomFieldSimple:
-      type: string
-    SomeCustomFieldComplicatedConfig:
-      type: string
-      index_anayser: nGram_analyser
-      search_analyser: whitespace_analyser
-      stored: true
+    - SomeOtherField
+    -
+      SomeCustomFieldSimple:
+        type: string
+    -
+      SomeCustomFieldComplicatedConfig:
+        type: string
+        index_anayser: nGram_analyser
+        search_analyser: whitespace_analyser
+        stored: true
 
 ```
 
@@ -195,7 +198,7 @@ class SearchController extends Page_Controller
     }
 
     /**
-     * @return bool|\Heyday\Elastica\PaginatedList
+     * @return bool|\SilverStripe\ORM\PaginatedList
      */
     public function Results()
     {
@@ -216,7 +219,7 @@ class SearchController extends Page_Controller
 
             $results = $this->searchService->search($query);
 
-            return new \Heyday\Elastica\PaginatedList($results, $request);
+            return new \SilverStripe\ORM\PaginatedList($results, $request);
         }
 
         return false;
