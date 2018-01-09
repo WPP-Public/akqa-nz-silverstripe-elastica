@@ -133,9 +133,9 @@ class ElasticaService
         if (!$this->indexingMemorySet && $this->indexingMemory) {
 
             if ($this->indexingMemory == 'unlimited') {
-                increase_memory_limit_to();
+                ini_set('memory_limit', -1);
             } else {
-                increase_memory_limit_to($this->indexingMemory);
+                ini_set('memory_limit', $this->indexingMemory);
             }
 
             $this->indexingMemorySet = true;
