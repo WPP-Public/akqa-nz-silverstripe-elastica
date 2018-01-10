@@ -12,10 +12,8 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 
 
 /**
- * Created by PhpStorm.
- * User: bdubuisson
- * Date: 9/08/17
- * Time: 10:06 AM
+ * Class ReindexAfterWriteJob
+ * @package Heyday\Elastica\Jobs
  */
 class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
@@ -132,6 +130,6 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
      */
     public function dependentClasses($versionToIndex)
     {
-        return $versionToIndex->stat('dependent_classes');
+        return $versionToIndex->config()->get('dependent_classes');
     }
 }
