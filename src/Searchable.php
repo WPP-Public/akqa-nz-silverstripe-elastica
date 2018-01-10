@@ -33,7 +33,7 @@ class Searchable extends DataExtension
         'HTMLText' => 'string',
         'HTMLVarchar' => 'string',
         'Int' => 'integer',
-        'SS_Datetime' => 'date',
+        'Datetime' => 'date',
         'Text' => 'string',
         'Varchar' => 'string',
         'Year' => 'integer',
@@ -87,7 +87,7 @@ class Searchable extends DataExtension
      */
     public function indexedFields()
     {
-        return $this->owner->stat('indexed_fields');
+        return $this->owner->config()->get('indexed_fields');
     }
 
     /**
@@ -97,7 +97,7 @@ class Searchable extends DataExtension
      */
     public function dependentClasses()
     {
-        return $this->owner->stat('dependent_classes');
+        return $this->owner->config()->get('dependent_classes');
     }
 
     /**
@@ -142,7 +142,7 @@ class Searchable extends DataExtension
     {
         $result = array();
 
-        $fields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->stat('fixed_fields'));
+        $fields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->config()->get('fixed_fields'));
 
         foreach ($this->owner->indexedFields() as $key => $fieldName) {
 
@@ -300,7 +300,7 @@ class Searchable extends DataExtension
 
         $this->setPublishedStatus($document);
 
-        $possibleFields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->stat('fixed_fields'));
+        $possibleFields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->config()->get('fixed_fields'));
 
         foreach ($this->getElasticaFields() as $field => $config) {
 
