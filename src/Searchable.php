@@ -25,6 +25,10 @@ class Searchable extends DataExtension
      * @var array
      */
     public static $mappings = array(
+        'PrimaryKey' => 'integer',
+        'ForeignKey' => 'integer',
+        'DBClassName' => 'string',
+        'DBDatetime' => 'date',
         'Boolean' => 'boolean',
         'Decimal' => 'double',
         'Double' => 'double',
@@ -181,12 +185,10 @@ class Searchable extends DataExtension
 
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
 
-            if (is_int($fieldName)) { // if non-associative array, use the key as fieldName
+            if (is_array($params)) { //If the parameters are an array, there's custom configuration
+                $fieldName = key($params);
+            } else {
                 $fieldName = $params;
-            }
-
-            if (is_array($fieldName)) {
-                $fieldName = key($fieldName);
             }
 
             if (array_key_exists($fieldName, $relations)) { // we have an indexed field that's a relationship.
@@ -198,7 +200,10 @@ class Searchable extends DataExtension
 
                     foreach ($related->indexedFields() as $relatedFieldName => $relatedParams) {
 
-                        if (is_int($relatedFieldName)) { // if non-associative array, use the key as fieldName
+                        if (is_array($relatedParams)) { //If the parameters are an array, there's custom configuration
+                            $relatedFieldName = key($relatedParams);
+                            $relatedParams = array_shift($relatedParams);
+                        } else {
                             $relatedFieldName = $relatedParams;
                         }
 
@@ -262,13 +267,16 @@ class Searchable extends DataExtension
      */
     public function getElasticaMapping()
     {
-        $fields = $this->getElasticaFields();
+        //Only get the mapping for non supporting types.
+        if (!$this->owner->config()->get('supporting_type')) {
+            $fields = $this->getElasticaFields();
 
-        if (count($fields)) {
-            $mapping = new Mapping();
-            $mapping->setProperties($this->getElasticaFields());
+            if (count($fields)) {
+                $mapping = new Mapping();
+                $mapping->setProperties($this->getElasticaFields());
 
-            return $mapping;
+                return $mapping;
+            }
         }
 
         return false;
@@ -515,6 +523,9 @@ class Searchable extends DataExtension
      */
     public function setValue($config, $fieldName, $document, $fieldValue)
     {
+        if ($fieldName == 'ListingTypeName') {
+                $s = 0;
+        }
         switch ($config['type']) {
             case 'date':
                 if ($fieldValue) {

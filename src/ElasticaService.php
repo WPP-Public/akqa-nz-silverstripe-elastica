@@ -19,6 +19,8 @@ class ElasticaService
 {
     use Configurable;
 
+    const CONFIGURE_DISABLE_INDEXING = 'disable_indexing';
+
     /**
      * @var Client
      */
@@ -44,11 +46,6 @@ class ElasticaService
      */
     private $indexingMemorySet = false;
 
-    /**
-     * @param Client $client
-     * @param string $indexName
-     * @param LoggerInterface $logger
-     */
     /**
      * @param Client $client
      * @param $indexName
@@ -130,34 +127,37 @@ class ElasticaService
      */
     public function index($record)
     {
-        if (!$this->indexingMemorySet && $this->indexingMemory) {
+        if (!$this->config()->get(self::CONFIGURE_DISABLE_INDEXING)
+            && !$record->config()->get('supporting_type')) {
+            if (!$this->indexingMemorySet && $this->indexingMemory) {
 
-            if ($this->indexingMemory == 'unlimited') {
-                ini_set('memory_limit', -1);
-            } else {
-                ini_set('memory_limit', $this->indexingMemory);
+                if ($this->indexingMemory == 'unlimited') {
+                    ini_set('memory_limit', -1);
+                } else {
+                    ini_set('memory_limit', $this->indexingMemory);
+                }
+
+                $this->indexingMemorySet = true;
             }
 
-            $this->indexingMemorySet = true;
-        }
+            try {
 
-        try {
+                $document = $record->getElasticaDocument();
+                $type = $record->getElasticaType();
+                $index = $this->getIndex();
 
-            $document = $record->getElasticaDocument();
-            $type = $record->getElasticaType();
-            $index = $this->getIndex();
+                $response = $index->getType($type)->addDocument($document);
+                $index->refresh();
 
-            $response = $index->getType($type)->addDocument($document);
-            $index->refresh();
+                return $response;
 
-            return $response;
+            } catch (\Exception $e) {
 
-        } catch (\Exception $e) {
+                if ($this->logger) {
+                    $this->logger->warning($e->getMessage());
+                }
 
-            if ($this->logger) {
-                $this->logger->warning($e->getMessage());
             }
-
         }
     }
 
@@ -168,17 +168,20 @@ class ElasticaService
      */
     public function remove($record)
     {
-        try {
+        if (!$this->config()->get(self::CONFIGURE_DISABLE_INDEXING)
+            && !$record->config()->get('supporting_type')) {
+            try {
 
-            $index = $this->getIndex();
-            $type = $index->getType($record->getElasticaType());
+                $index = $this->getIndex();
+                $type = $index->getType($record->getElasticaType());
 
-            return $type->deleteDocument($record->getElasticaDocument());
+                return $type->deleteDocument($record->getElasticaDocument());
 
-        } catch (\Exception $e) {
+            } catch (\Exception $e) {
 
-            if ($this->logger) {
-                $this->logger->warning($e->getMessage());
+                if ($this->logger) {
+                    $this->logger->warning($e->getMessage());
+                }
             }
         }
     }
