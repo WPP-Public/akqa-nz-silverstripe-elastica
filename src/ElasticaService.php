@@ -9,6 +9,7 @@ use Psr\Log\LoggerInterface;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
+use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Versioned\Versioned;
 
@@ -218,27 +219,29 @@ class ElasticaService
         Versioned::set_reading_mode('Stage.Live');
 
         foreach ($this->getIndexedClasses() as $class) {
-            foreach ($class::get() as $record) {
+            if (!Config::inst()->get($class, 'supporting_type')) { //Only index types (or classes) that are not just supporting other index types
+                foreach ($class::get() as $record) {
 
-                //Only index records with Show In Search enabled for Site Tree descendants
-                //otherwise index all other data objects
-                if (($record instanceof SiteTree && $record->ShowInSearch) ||
-                    (!$record instanceof SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
-                    (!$record instanceof SiteTree && !$record->hasMethod('getShowInSearch'))
-                ) {
-                    $this->index($record);
-                    if (Director::is_cli()) {
-                        print "INDEXED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
-                    } else {
-                        print "<strong>INDEXED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
-                    }
+                    //Only index records with Show In Search enabled for Site Tree descendants
+                    //otherwise index all other data objects
+                    if (($record instanceof SiteTree && $record->ShowInSearch) ||
+                        (!$record instanceof SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
+                        (!$record instanceof SiteTree && !$record->hasMethod('getShowInSearch'))
+                    ) {
+                        $this->index($record);
+                        if (Director::is_cli()) {
+                            print "INDEXED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
+                        } else {
+                            print "<strong>INDEXED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                        }
 
-                } else {
-                    $this->remove($record);
-                    if (Director::is_cli()) {
-                        print "REMOVED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
                     } else {
-                        print "<strong>REMOVED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                        $this->remove($record);
+                        if (Director::is_cli()) {
+                            print "REMOVED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
+                        } else {
+                            print "<strong>REMOVED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                        }
                     }
                 }
             }
