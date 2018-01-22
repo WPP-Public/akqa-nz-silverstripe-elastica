@@ -304,11 +304,15 @@ class Searchable extends DataExtension
      */
     public function getElasticaDocument()
     {
+        $ownerConfig = $this->owner->config();
         $document = new Document($this->owner->ID);
 
         $this->setPublishedStatus($document);
 
-        $possibleFields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->config()->get('fixed_fields'));
+        $possibleFields = array_merge(
+            $this->owner->inheritedDatabaseFields(),
+            $ownerConfig->get('fixed_fields')
+        );
 
         foreach ($this->getElasticaFields() as $field => $config) {
 
@@ -319,8 +323,11 @@ class Searchable extends DataExtension
                 $this->setValue($config, $field, $document, $this->owner->$field);
 
             } else {
-                $ownerConfig = $this->owner->config();
-                $possibleRelations = array_merge($ownerConfig->get('has_one'), $ownerConfig->get('has_many'), $ownerConfig->get('many_many'));
+                $possibleRelations = array_merge(
+                    $ownerConfig->get('has_one'),
+                    $ownerConfig->get('has_many'),
+                    $ownerConfig->get('many_many')
+                );
 
                 list($relation, $fieldName) = explode('_', $field);
 
@@ -334,16 +341,7 @@ class Searchable extends DataExtension
 
                         if (array_key_exists($fieldName, $possibleFields)) {
 
-                            switch ($config['type']) {
-                                case 'date':
-                                    if ($related->$fieldName) {
-                                        $document->set($field, $this->formatDate($related->$fieldName));
-                                    }
-                                    break;
-                                default:
-                                    $document->set($field, $related->$fieldName);
-                                    break;
-                            }
+                            $this->setValue($config, $field, $document, $related->$fieldName);
 
                         } else if ($config['type'] == 'attachment') {
 
@@ -364,7 +362,7 @@ class Searchable extends DataExtension
                             $possibleFields = $relatedItem::getSchema()->fieldSpecs($relatedItem);
 
                             if (array_key_exists($fieldName, $possibleFields) ||
-                                $related->hasMethod('get' . $fieldName)
+                                $relatedItem->hasMethod('get' . $fieldName)
                             ) {
                                 switch ($config['type']) {
                                     case 'date':
@@ -379,8 +377,7 @@ class Searchable extends DataExtension
 
                             } else if ($config['type'] == 'attachment') {
                                 if ($relatedItem->hasMethod('get' . $fieldName)) {
-                                    $methodName = 'get' . $fieldName;
-                                    $data = $relatedItem->$methodName();
+                                    $data = $relatedItem->$fieldName;
                                 } else {
                                     $file = $relatedItem->$fieldName();
 
@@ -523,9 +520,6 @@ class Searchable extends DataExtension
      */
     public function setValue($config, $fieldName, $document, $fieldValue)
     {
-        if ($fieldName == 'ListingTypeName') {
-                $s = 0;
-        }
         switch ($config['type']) {
             case 'date':
                 if ($fieldValue) {
