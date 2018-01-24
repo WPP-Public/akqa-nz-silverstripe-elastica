@@ -322,7 +322,7 @@ class Searchable extends DataExtension
 
                 $this->setValue($config, $field, $document, $this->owner->$field);
 
-            } else {
+            } else if (strpos($field, '_') > 0) {
                 $possibleRelations = array_merge(
                     $ownerConfig->get('has_one'),
                     $ownerConfig->get('has_many'),
