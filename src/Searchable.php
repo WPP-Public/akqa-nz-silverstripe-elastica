@@ -144,7 +144,10 @@ class Searchable extends DataExtension
      */
     protected function getSearchableFields()
     {
-        $result = array();
+        $result = array(
+            'ID' => ['type' => 'long'],
+            'ClassName' => ['type' => 'string']
+        );
 
         $fields = array_merge($this->owner->inheritedDatabaseFields(), $this->owner->config()->get('fixed_fields'));
 
@@ -305,8 +308,8 @@ class Searchable extends DataExtension
     public function getElasticaDocument()
     {
         $ownerConfig = $this->owner->config();
-        $document = new Document($this->owner->ID);
-
+        $id = str_replace('\\', '_', $this->owner->getElasticaType()) . '_' . $this->owner->ID;
+        $document = new Document($id);
         $this->setPublishedStatus($document);
 
         $possibleFields = array_merge(
