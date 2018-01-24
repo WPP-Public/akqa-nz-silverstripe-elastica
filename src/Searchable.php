@@ -288,7 +288,7 @@ class Searchable extends DataExtension
     protected function setPublishedStatus($document)
     {
         $isLive = true;
-        if ($this->owner->hasExtension('Versioned')) {
+        if ($this->owner->hasExtension(Versioned::class)) {
             if ($this->owner instanceof SiteTree) {
                 $isLive = $this->owner->isPublished();
             }
