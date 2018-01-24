@@ -420,14 +420,17 @@ class Searchable extends DataExtension
     /**
      * reIndex related content
      */
-    public function reIndex()
+    public function reIndex($stage = 'Live')
     {
-        $reading_mode = Versioned::get_reading_mode();
-        Versioned::set_reading_mode('Stage.Live');
+        $versionToIndex = $this->owner;
+        
+        $currentStage = Versioned::get_stage();
+        if ($stage != $currentStage) {
+            $versionToIndex = Versioned::get_by_stage($this->owner->ClassName, $stage)->byID($this->owner->ID);
+        }
 
-        $versionToIndex = DataObject::get($this->owner->ClassName)->byID($this->owner->ID);
         if (is_null($versionToIndex)) {
-            $versionToIndex = $this->owner;
+            return;
         }
 
         if (($versionToIndex instanceof SiteTree && $versionToIndex->ShowInSearch) ||
