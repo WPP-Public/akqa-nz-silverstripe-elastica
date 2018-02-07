@@ -47,7 +47,7 @@ class ElasticaService
      */
     private $indexingMemorySet = false;
 
-    private $searchableExtensionClassName;
+    public $searchableExtensionClassName;
 
     /**
      * ElasticaService constructor.
