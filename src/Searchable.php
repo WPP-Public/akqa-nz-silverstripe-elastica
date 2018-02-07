@@ -447,7 +447,7 @@ class Searchable extends DataExtension
     /**
      * Removes the record from the search index.
      */
-    public function onAfterDelete()
+    public function onBeforeDelete()
     {
         $this->service->remove($this->owner);
         if ($this->queued) {
@@ -497,7 +497,7 @@ class Searchable extends DataExtension
                 foreach ($list as $object) {
 
                     if ($object instanceof DataObject &&
-                        $object->hasExtension('Heyday\\Elastica\\Searchable')
+                        $object->hasExtension(self::class)
                     ) {
                         if (($object instanceof SiteTree && $object->ShowInSearch) ||
                             (!$object instanceof SiteTree)

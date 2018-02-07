@@ -47,19 +47,29 @@ class ElasticaService
      */
     private $indexingMemorySet = false;
 
+    private $searchableExtensionClassName;
+
     /**
+     * ElasticaService constructor.
      * @param Client $client
      * @param $indexName
-     * @param LoggerInterface $logger
-     * @param string $indexingMemory Increases the memory limit while indexing. A memory limit string, such as "64M".
-     * 'unlimited' if you want no limit
+     * @param LoggerInterface|null $logger Increases the memory limit while indexing. A memory limit string, such as "64M".
+     * @param null $indexingMemory
+     * @param string $searchableExtensionClassName
      */
-    public function __construct(Client $client, $indexName, LoggerInterface $logger = null, $indexingMemory = null)
+    public function __construct(
+        Client $client,
+        $indexName,
+        LoggerInterface $logger = null,
+        $indexingMemory = null,
+        $searchableExtensionClassName = Searchable::class
+    )
     {
         $this->client = $client;
         $this->indexName = $indexName;
         $this->logger = $logger;
         $this->indexingMemory = $indexingMemory;
+        $this->searchableExtensionClassName = $searchableExtensionClassName;
     }
 
     /**
@@ -259,7 +269,7 @@ class ElasticaService
         $classes = array();
         foreach (ClassInfo::subclassesFor('SilverStripe\ORM\DataObject') as $candidate) {
             $candidateInstance = singleton($candidate);
-            if ($candidateInstance->hasExtension('Heyday\\Elastica\\Searchable') && $candidate != 'Page') {
+            if ($candidateInstance->hasExtension($this->searchableExtensionClassName) && $candidate != 'Page') {
                 $classes[] = $candidate;
             }
         }
