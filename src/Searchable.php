@@ -196,7 +196,7 @@ class Searchable extends DataExtension
                 $related = singleton($className);
                 $fields = $related::getSchema()->fieldSpecs($related);
 
-                if ($related->hasExtension('Heyday\\Elastica\\Searchable')) {
+                if ($related->hasExtension(get_class($this))) {
 
                     foreach ($related->indexedFields() as $relatedFieldName => $relatedParams) {
 
@@ -497,7 +497,7 @@ class Searchable extends DataExtension
                 foreach ($list as $object) {
 
                     if ($object instanceof DataObject &&
-                        $object->hasExtension(self::class)
+                        $object->hasExtension(get_class($this))
                     ) {
                         if (($object instanceof SiteTree && $object->ShowInSearch) ||
                             (!$object instanceof SiteTree)
