@@ -189,7 +189,7 @@ class ResultList extends ViewableData implements SS_List
                         $needed[$type] = array($id);
                         $retrieved[$type] = array();
                     } else {
-                        $needed[$type][] = $item->getId();
+                        $needed[$type][] = $id;
                     }
                 }
 
