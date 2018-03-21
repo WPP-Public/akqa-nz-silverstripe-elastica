@@ -523,6 +523,9 @@ class Searchable extends DataExtension
     public function setValue($config, $fieldName, $document, $fieldValue)
     {
         switch ($config['type']) {
+            case 'boolean':
+                $document->set($fieldName, boolval($fieldValue) ? 'true' : 'false');
+                break;
             case 'date':
                 if ($fieldValue) {
                     $document->set($fieldName, $this->formatDate($fieldValue));
