@@ -423,7 +423,7 @@ class Searchable extends DataExtension
     public function reIndex($stage = 'Live')
     {
         $versionToIndex = $this->owner;
-        
+
         $currentStage = Versioned::get_stage();
         if ($stage != $currentStage) {
             $versionToIndex = Versioned::get_by_stage($this->owner->ClassName, $stage)->byID($this->owner->ID);
@@ -454,7 +454,7 @@ class Searchable extends DataExtension
         $this->service->remove($this->owner);
         if ($this->queued) {
             $reindex = new ReindexAfterWriteJob($this->owner);
-            singleton('QueuedJobService')->queueJob($reindex);
+            singleton('Symbiote\QueuedJobs\Services\QueuedJobService')->queueJob($reindex);
         } else {
             $this->updateDependentClasses();
         }
@@ -467,7 +467,7 @@ class Searchable extends DataExtension
     {
         if ($this->queued) {
             $reindex = new ReindexAfterWriteJob($this->owner);
-            singleton('QueuedJobService')->queueJob($reindex);
+            singleton('Symbiote\QueuedJobs\Services\QueuedJobService')->queueJob($reindex);
         } else {
             $this->updateDependentClasses();
         }
@@ -480,7 +480,7 @@ class Searchable extends DataExtension
     {
         if ($this->queued) {
             $reindex = new ReindexAfterWriteJob($this->owner);
-            singleton('QueuedJobService')->queueJob($reindex);
+            singleton('Symbiote\QueuedJobs\Services\QueuedJobService')->queueJob($reindex);
         } else {
             $this->updateDependentClasses();
         }
