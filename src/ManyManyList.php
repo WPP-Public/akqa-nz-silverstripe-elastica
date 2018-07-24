@@ -2,6 +2,7 @@
 
 namespace Heyday\Elastica;
 
+use Exception;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\ManyManyList as SilverStripeManyManyList;
@@ -15,10 +16,10 @@ class ManyManyList extends SilverStripeManyManyList
 {
     /**
      * @param mixed $item
-     * @param null $extraFields
-     * @throws \Exception
+     * @param array $extraFields
+     * @throws Exception
      */
-    public function add($item, $extraFields = null)
+    public function add($item, $extraFields = [])
     {
         parent::add($item, $extraFields);
 
@@ -47,15 +48,12 @@ class ManyManyList extends SilverStripeManyManyList
         return $result;
     }
 
-    /**
-     *
-     */
     public function removeAll()
     {
         parent::removeAll();
 
         $items = DataList::create($this->dataClass);
-
+        /** @var DataObject $item */
         foreach ($items as $item) {
             $item->extend('onAfterManyManyRelationRemove');
         }

@@ -98,7 +98,9 @@ Your\Namespace\SpecialPageWithRelatedDataObject:
     - Heyday\Elastica\Searchable
   indexed_fields:
     <<: *page_defaults
-    - RelatedDataObjects
+    -
+      RelatedDataObjects:
+        type: nested
     
 Your\Namespace\RelatedDataObject:
   extensions:

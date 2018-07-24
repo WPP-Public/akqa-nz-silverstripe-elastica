@@ -4,13 +4,16 @@ namespace Heyday\Elastica;
 
 use Elastica\Client;
 use Elastica\Exception\NotFoundException;
+use Elastica\Index;
 use Elastica\Query;
+use Elastica\Response;
+use Exception;
 use Psr\Log\LoggerInterface;
-use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
 
 /**
@@ -51,10 +54,11 @@ class ElasticaService
 
     /**
      * ElasticaService constructor.
+     *
      * @param Client $client
-     * @param $indexName
-     * @param LoggerInterface|null $logger Increases the memory limit while indexing. A memory limit string, such as "64M".
-     * @param null $indexingMemory
+     * @param string $indexName
+     * @param LoggerInterface|null $logger Increases the memory limit while indexing.
+     * @param string $indexingMemory A memory limit string, such as "64M".
      * @param string $searchableExtensionClassName
      */
     public function __construct(
@@ -63,8 +67,7 @@ class ElasticaService
         LoggerInterface $logger = null,
         $indexingMemory = null,
         $searchableExtensionClassName = Searchable::class
-    )
-    {
+    ) {
         $this->client = $client;
         $this->indexName = $indexName;
         $this->logger = $logger;
@@ -73,7 +76,7 @@ class ElasticaService
     }
 
     /**
-     * @return \Elastica\Client
+     * @return Client
      */
     public function getClient()
     {
@@ -81,7 +84,7 @@ class ElasticaService
     }
 
     /**
-     * @return \Elastica\Index
+     * @return Index
      */
     public function getIndex()
     {
@@ -89,7 +92,7 @@ class ElasticaService
     }
 
     /**
-     * @return array|\scalar
+     * @return array
      */
     protected function getIndexConfig()
     {
@@ -108,10 +111,12 @@ class ElasticaService
         if ($returnResultList) {
             return new ResultList($this->getIndex(), Query::create($query), $this->logger);
         }
-
         return $this->getIndex()->search($query, $options);
     }
 
+    /**
+     * @throws Exception
+     */
     public function createIndex()
     {
         $index = $this->getIndex();
@@ -119,11 +124,8 @@ class ElasticaService
         if ($config = $this->getIndexConfig()) {
             try {
                 $index->create($config, true);
-            } catch (\Exception $e) {
-
-                if ($this->logger) {
-                    $this->logger->warning($e->getMessage());
-                }
+            } catch (Exception $e) {
+                $this->exception($e);
             }
         } else {
             $index->create();
@@ -131,74 +133,84 @@ class ElasticaService
     }
 
     /**
-     * Either creates or updates a record in the index.
+     * Remove the index
      *
-     * @param Searchable $record
-     * @return \Elastica\Response
+     * @throws Exception
      */
-    public function index($record)
+    public function deleteIndex()
     {
-        if (!$this->config()->get(self::CONFIGURE_DISABLE_INDEXING)
-            && !$record->config()->get('supporting_type')) {
-            if (!$this->indexingMemorySet && $this->indexingMemory) {
-
-                if ($this->indexingMemory == 'unlimited') {
-                    ini_set('memory_limit', -1);
-                } else {
-                    ini_set('memory_limit', $this->indexingMemory);
-                }
-
-                $this->indexingMemorySet = true;
-            }
-
-            try {
-
-                $document = $record->getElasticaDocument();
-                $type = $record->getElasticaType();
-                $index = $this->getIndex();
-
-                $response = $index->getType($type)->addDocument($document);
-                $index->refresh();
-
-                return $response;
-
-            } catch (\Exception $e) {
-
-                if ($this->logger) {
-                    $this->logger->warning($e->getMessage());
-                }
-
-            }
+        $index = $this->getIndex();
+        try {
+            $index->delete();
+        } catch (Exception $e) {
+            $this->exception($e);
         }
     }
 
     /**
-     * @param Searchable $record
-     * @return \Elastica\Response
+     * Either creates or updates a record in the index.
+     *
+     * @param Searchable|DataObject $record
+     * @return Response|null
+     * @throws Exception
+     */
+    public function index($record)
+    {
+        // Ignore if disabled or only a supporting type
+        if ($this->config()->get(self::CONFIGURE_DISABLE_INDEXING) || $record->config()->get('supporting_type')) {
+            return null;
+        }
+
+        if (!$this->indexingMemorySet && $this->indexingMemory) {
+            if ($this->indexingMemory == 'unlimited') {
+                ini_set('memory_limit', -1);
+            } else {
+                ini_set('memory_limit', $this->indexingMemory);
+            }
+            $this->indexingMemorySet = true;
+        }
+
+        try {
+            $document = $record->getElasticaDocument();
+            $type = $record->getElasticaType();
+            $index = $this->getIndex();
+
+            $response = $index->getType($type)->addDocument($document);
+            $index->refresh();
+
+            return $response;
+        } catch (Exception $e) {
+            $this->exception($e);
+            return null;
+        }
+    }
+
+    /**
+     * @param Searchable|DataObject $record
+     * @return Response|null
      * @throws NotFoundException
+     * @throws Exception
      */
     public function remove($record)
     {
-        if (!$this->config()->get(self::CONFIGURE_DISABLE_INDEXING)
-            && !$record->config()->get('supporting_type')) {
-            try {
+        // Ignore if disabled or only a supporting type
+        if ($this->config()->get(self::CONFIGURE_DISABLE_INDEXING) || $record->config()->get('supporting_type')) {
+            return null;
+        }
 
-                $index = $this->getIndex();
-                $type = $index->getType($record->getElasticaType());
-
-                return $type->deleteDocument($record->getElasticaDocument());
-
-            } catch (\Exception $e) {
-
-                if ($this->logger) {
-                    $this->logger->warning($e->getMessage());
-                }
-            }
+        try {
+            $index = $this->getIndex();
+            $type = $index->getType($record->getElasticaType());
+            return $type->deleteDocument($record->getElasticaDocument());
+        } catch (Exception $e) {
+            $this->exception($e);
+            return null;
         }
     }
 
     /**
      * Creates the index and the type mappings.
+     * @throws Exception
      */
     public function define()
     {
@@ -222,6 +234,7 @@ class ElasticaService
 
     /**
      * Re-indexes each record in the index.
+     * @throws Exception
      */
     public function refresh()
     {
@@ -229,28 +242,18 @@ class ElasticaService
         Versioned::set_reading_mode('Stage.Live');
 
         foreach ($this->getIndexedClasses() as $class) {
-            if (!Config::inst()->get($class, 'supporting_type')) { //Only index types (or classes) that are not just supporting other index types
+            //Only index types (or classes) that are not just supporting other index types
+            if (!Config::inst()->get($class, 'supporting_type')) {
+                /** @var DataObject $record */
                 foreach ($class::get() as $record) {
-
-                    //Only index records with Show In Search enabled for Site Tree descendants
-                    //otherwise index all other data objects
-                    if (($record instanceof SiteTree && $record->ShowInSearch) ||
-                        (!$record instanceof SiteTree && ($record->hasMethod('getShowInSearch') && $record->getShowInSearch())) ||
-                        (!$record instanceof SiteTree && !$record->hasMethod('getShowInSearch'))
-                    ) {
-                        $this->index($record);
-                        if (Director::is_cli()) {
-                            print "INDEXED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
-                        } else {
-                            print "<strong>INDEXED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                    // Only index records with Show In Search enabled, or those that don't expose that fielid
+                    if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
+                        if ($this->index($record)) {
+                            $this->printActionMessage($record, 'INDEXED');
                         }
-
                     } else {
-                        $this->remove($record);
-                        if (Director::is_cli()) {
-                            print "REMOVED: Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "\n";
-                        } else {
-                            print "<strong>REMOVED: </strong>Document Type \"" . $record->getClassName() . "\" - " . $record->getTitle() . " - ID " . $record->ID . "<br>";
+                        if ($this->remove($record)) {
+                            $this->printActionMessage($record, 'REMOVED');
                         }
                     }
                 }
@@ -267,8 +270,8 @@ class ElasticaService
     public function getIndexedClasses()
     {
         $classes = array();
-        foreach (ClassInfo::subclassesFor('SilverStripe\ORM\DataObject') as $candidate) {
-            $candidateInstance = singleton($candidate);
+        foreach (ClassInfo::subclassesFor(DataObject::class) as $candidate) {
+            $candidateInstance = DataObject::singleton($candidate);
             if ($candidateInstance->hasExtension($this->searchableExtensionClassName) && $candidate != 'Page') {
                 $classes[] = $candidate;
             }
@@ -276,4 +279,43 @@ class ElasticaService
         return $classes;
     }
 
+    /**
+     * Output message when item is indexed / removed
+     *
+     * @param DataObject $record
+     * @param string $action Action type
+     */
+    protected function printActionMessage(DataObject $record, $action)
+    {
+        $documentDetails = "Document Type \"{$record->ClassName}\" - {$record->Title} - ID {$record->ID}";
+        if (Director::is_cli()) {
+            print "{$action}: {$documentDetails}\n";
+        } else {
+            print "<strong>{$action}: </strong>{$documentDetails}<br>";
+        }
+    }
+
+    /**
+     * If a logger is configured, log the exception there.
+     * Otherwise the exception is thrown
+     *
+     * @param Exception $exception
+     * @throws Exception
+     */
+    protected function exception($exception)
+    {
+        // If no logger specified expose error normally
+        if (!$this->logger) {
+            throw $exception;
+        }
+
+        $message = sprintf(
+            'Uncaught Exception %s: "%s" at %s line %s',
+            get_class($exception),
+            $exception->getMessage(),
+            $exception->getFile(),
+            $exception->getLine()
+        );
+        $this->logger->error($message);
+    }
 }
