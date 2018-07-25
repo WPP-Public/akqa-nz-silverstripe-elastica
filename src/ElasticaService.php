@@ -188,7 +188,6 @@ class ElasticaService
     /**
      * @param Searchable|DataObject $record
      * @return Response|null
-     * @throws NotFoundException
      * @throws Exception
      */
     public function remove($record)
@@ -202,6 +201,9 @@ class ElasticaService
             $index = $this->getIndex();
             $type = $index->getType($record->getElasticaType());
             return $type->deleteDocument($record->getElasticaDocument());
+        } catch (NotFoundException $ex) {
+            // If deleted records already were deleted, treat as non-error
+            return null;
         } catch (Exception $e) {
             $this->exception($e);
             return null;
