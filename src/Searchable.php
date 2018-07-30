@@ -184,8 +184,13 @@ class Searchable extends DataExtension
     {
         $result = [];
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
-            // Build nested field from relation (unless attachment)
-            $relationClass = $this->owner->getRelationClass($fieldName);
+            // Check nested relation class
+            $relationClass = isset($params['relationClass'])
+                ? $params['relationClass']
+                : $this->owner->getRelationClass($fieldName);
+            unset($params['relationClass']); // Don't send to elasticsearch
+
+            // Build nested field from relation
             if ($relationClass) {
                 // Relations can add multiple fields, so merge them all here
                 $nestedFields = $this->getSearchableFieldsForRelation($fieldName, $params, $relationClass);
@@ -300,8 +305,13 @@ class Searchable extends DataExtension
     {
         $fieldValues = [];
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
+            // Check nested relation class
+            $relationClass = isset($params['relationClass'])
+                ? $params['relationClass']
+                : $this->owner->getRelationClass($fieldName);
+            unset($params['relationClass']); // Don't send to elasticsearch
+
             // Build nested field from relation
-            $relationClass = $this->owner->getRelationClass($fieldName);
             if ($relationClass) {
                 // Relations can add multiple fields, so merge them all here
                 $nestedFieldValues = $this->getSearchableFieldValuesForRelation($fieldName, $params, $relationClass);
