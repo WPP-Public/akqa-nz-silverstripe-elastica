@@ -72,7 +72,7 @@ class Searchable extends DataExtension
     /**
      * @param boolean $queued
      */
-    public function setQueued($queued)
+    protected function setUseQueuedJobs($queued)
     {
         $this->queued = $queued;
     }
@@ -82,7 +82,7 @@ class Searchable extends DataExtension
      *
      * @return bool
      */
-    protected function getQueued()
+    protected function getUseQueuedJobs()
     {
         return $this->queued && class_exists(QueuedJobService::class);
     }
@@ -336,7 +336,7 @@ class Searchable extends DataExtension
      */
     public function onAfterWrite()
     {
-        if ($this->getQueued()) {
+        if ($this->getUseQueuedJobs()) {
             $this->queueReindex();
         } else {
             $this->reIndex();
@@ -378,7 +378,7 @@ class Searchable extends DataExtension
     public function onBeforeDelete()
     {
         $this->service->remove($this->owner);
-        if ($this->getQueued()) {
+        if ($this->getUseQueuedJobs()) {
             $this->queueReindex();
         } else {
             $this->updateDependentClasses();
@@ -391,7 +391,7 @@ class Searchable extends DataExtension
      */
     public function onAfterManyManyRelationRemove()
     {
-        if ($this->getQueued()) {
+        if ($this->getUseQueuedJobs()) {
             $this->queueReindex();
         } else {
             $this->updateDependentClasses();
@@ -404,7 +404,7 @@ class Searchable extends DataExtension
      */
     public function onAfterManyManyRelationAdd()
     {
-        if ($this->getQueued()) {
+        if ($this->getUseQueuedJobs()) {
             $this->queueReindex();
         } else {
             $this->updateDependentClasses();
@@ -451,19 +451,6 @@ class Searchable extends DataExtension
             '_name'         => $file->Name,
             '_content'      => $value,
         ];
-    }
-
-    /**
-     * Assign a document value
-     *
-     * @param array $config
-     * @param string $fieldName
-     * @param Document $document
-     * @param mixed $fieldValue
-     */
-    public function setValue($config, $fieldName, $document, $fieldValue)
-    {
-        $document->set($fieldName, $this->formatValue($config, $fieldValue));
     }
 
     /**
@@ -666,7 +653,7 @@ class Searchable extends DataExtension
      */
     protected function queueReindex()
     {
-        if (!$this->getQueued()) {
+        if (!$this->getUseQueuedJobs()) {
             throw new BadMethodCallException("Queued is disabled or queuedjobs module is not installed");
         }
 
