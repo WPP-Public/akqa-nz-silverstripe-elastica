@@ -43,7 +43,13 @@ class ResultList extends ViewableData implements SS_List
 
         //If we are in live reading mode, only return published documents
         if (Versioned::get_reading_mode() == Versioned::DEFAULT_MODE) {
-            $publishedFilter = new Query\BoolQuery();
+            $publishedFilter = $query->hasParam('post_filter') ? $query->getParam('post_filter') : null;
+            if (!$publishedFilter) {
+                $publishedFilter = new Query\BoolQuery();
+            } else if (!($publishedFilter instanceof Query\BoolQuery)) {
+                throw new \RuntimeException("Please use a bool query for your post_filter");
+            }
+             
             $publishedFilter->addMust(new Query\Term([Searchable::$published_field => 'true']));
             $query->setPostFilter($publishedFilter);
         }
