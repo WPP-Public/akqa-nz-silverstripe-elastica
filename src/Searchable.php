@@ -232,11 +232,14 @@ class Searchable extends DataExtension
     }
 
     /**
-     * @param $dateString
-     * @return bool|string
+     * @param string $dateString
+     * @return string|null
      */
     protected function formatDate($dateString)
     {
+        if (empty($dateString)) {
+            return null;
+        }
         return date('Y-m-d\TH:i:s', strtotime($dateString));
     }
 
