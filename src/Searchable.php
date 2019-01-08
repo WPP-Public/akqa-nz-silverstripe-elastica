@@ -7,7 +7,6 @@ use Elastica\Document;
 use Elastica\Type\Mapping;
 use Exception;
 use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
-use function is_numeric;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Model\SiteTree;
@@ -18,6 +17,7 @@ use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
 use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
+use function is_numeric;
 
 /**
  * Adds elastic search integration to a data object.
@@ -63,6 +63,11 @@ class Searchable extends DataExtension
      * @var ElasticaService
      */
     private $service;
+
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger = null;
 
     /**
      * @var bool
@@ -241,6 +246,34 @@ class Searchable extends DataExtension
             return null;
         }
         return date('Y-m-d\TH:i:s', strtotime($dateString));
+    }
+
+    /**
+     * Coerce strings into integers
+     *
+     * @param mixed $intString
+     * @return int|null
+     */
+    protected function formatInt($intString)
+    {
+        if (is_null($intString)) {
+            return null;
+        }
+        return (int)$intString;
+    }
+
+    /**
+     * Coerce strings into floats
+     *
+     * @param mixed $floatString
+     * @return float|null
+     */
+    protected function formatFloat($floatString)
+    {
+        if (is_null($floatString)) {
+            return null;
+        }
+        return (float)$floatString;
     }
 
     /**
@@ -460,7 +493,7 @@ class Searchable extends DataExtension
      * Build searchable spec for a given field
      *
      * @param string $fieldName
-     * @param array $params Spec params
+     * @param array  $params Spec params
      * @param string $className
      * @return array
      */
@@ -509,7 +542,7 @@ class Searchable extends DataExtension
      * Get all fields from a relation on a parent object
      *
      * @param string $fieldName
-     * @param array $params Spec params
+     * @param array  $params Spec params
      * @param string $className
      * @return array
      */
@@ -519,10 +552,10 @@ class Searchable extends DataExtension
         if (isset($params['type']) && $params['type'] === 'attachment') {
             /** @var File $file */
             $file = $this->owner->$fieldName();
-            if (! $file instanceof File || !$file->exists()) {
+            if (!$file instanceof File || !$file->exists()) {
                 return [];
             }
-            return [ $fieldName => $this->createAttachment($file) ];
+            return [$fieldName => $this->createAttachment($file)];
         }
 
         // Skip if this relation class has no elasticsearch content
@@ -619,6 +652,10 @@ class Searchable extends DataExtension
                 return $this->formatBoolean($fieldValue);
             case 'date':
                 return $this->formatDate($fieldValue);
+            case 'integer':
+                return $this->formatInt($fieldValue);
+            case 'float':
+                return $this->formatFloat($fieldValue);
             default:
                 return $fieldValue;
         }
@@ -628,7 +665,7 @@ class Searchable extends DataExtension
      * Get extra params for a field from the parent document
      *
      * @param string $fieldName
-     * @param array $params
+     * @param array  $params
      * @return array
      */
     protected function getExtraFieldParams($fieldName, $params)
