@@ -41,10 +41,21 @@ class ResultList extends ViewableData implements SS_List
             '_type'
         ));
 
-        $query->setSource([
-            'ID',
-            'ClassName'
-        ]);
+        // update the 'source' param of the query to ensure ID and ClassName are retrieved
+        $source = $query->getParam('_source');
+        if ($source && is_array($source)) {
+            $source[] = 'ID';
+            $source[] = 'ClassName';
+            $source = array_unique($source);
+            
+        } else {
+            $source = [
+                'ID',
+                'ClassName'
+            ];
+        }
+        $query->setSource($source);
+        
 
         //If we are in live reading mode, only return published documents
         if (Versioned::get_reading_mode() == Versioned::DEFAULT_MODE) {
