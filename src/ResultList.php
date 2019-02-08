@@ -42,8 +42,8 @@ class ResultList extends ViewableData implements SS_List
         ));
 
         // update the 'source' param of the query to ensure ID and ClassName are retrieved
-        $source = $query->getParam('_source');
-        if ($source && is_array($source)) {
+        if ($query->hasParam('_source')) {
+            $source = $query->getParam('_source');
             $source[] = 'ID';
             $source[] = 'ClassName';
             $source = array_unique($source);
