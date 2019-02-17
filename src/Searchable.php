@@ -408,6 +408,19 @@ class Searchable extends DataExtension
     }
 
     /**
+     * Batch update all documents attached to the index for this record
+     *
+     * @param callable $callback
+     * @param int      $documentsProcessed
+     * @return mixed
+     * @throws Exception
+     */
+    public function batchIndex(callable $callback, &$documentsProcessed = 0)
+    {
+        return $this->service->batch($callback, $documentsProcessed);
+    }
+
+    /**
      * Removes the record from the search index.
      * @throws Exception
      */
