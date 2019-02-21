@@ -1,6 +1,7 @@
 <?php
 
 namespace Heyday\Elastica;
+
 use SilverStripe\Control\Director;
 use SilverStripe\Dev\BuildTask;
 
@@ -43,5 +44,4 @@ class ReindexTask extends BuildTask
         $message('Refreshing the index');
         $this->service->refresh();
     }
-
 }

@@ -161,7 +161,6 @@ class ResultList extends ViewableData implements SS_List
     public function toArray()
     {
         if (!is_array($this->resultsArray)) {
-
             $this->resultsArray = array();
 
             $found = $this->getResults();
@@ -169,7 +168,6 @@ class ResultList extends ViewableData implements SS_List
             $retrieved = array();
 
             if (is_array($found) || $found instanceof \ArrayAccess) {
-
                 foreach ($found as $item) {
                     $type = $item->getType();
 
@@ -347,5 +345,4 @@ class ResultList extends ViewableData implements SS_List
     {
         throw new \Exception();
     }
-
 }
