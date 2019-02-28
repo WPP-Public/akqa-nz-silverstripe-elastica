@@ -238,40 +238,56 @@ class ElasticaService
             return $callback();
         } finally {
             try {
-                // process batches
-                /** @var Document[][][] $batch */
                 $batch = array_pop($this->batches);
-                $index = $this->getIndex();
-                foreach ($batch as $type => $changes) {
-                    $typeObject = $index->getType($type);
-
-                    foreach ($changes as $action => $documents) {
-                        if (empty($documents)) {
-                            continue;
-                        }
-                        $documentsProcessed += count($documents);
-                        switch ($action) {
-                            case self::UPDATES:
-                                $typeObject->addDocuments($documents);
-                                break;
-                            case self::DELETES:
-                                try {
-                                    $typeObject->deleteDocuments($documents);
-                                } catch (NotFoundException $ex) {
-                                    // no-op if not found
-                                }
-                                break;
-                            default:
-                                throw new LogicException("Invalid batch action {$action}");
-                        }
-                    }
-                }
-                // Refresh after each type
-                $index->refresh();
+                $documentsProcessed = $this->flushBatch($batch);
             } catch (Exception $ex) {
                 $this->exception($ex);
             }
         }
+    }
+
+    /**
+     * Process a batch update
+     *
+     * @param Document[][][] $batch List of updates for this batch, grouped by type
+     * @return int Number of documents updated in this batch
+     */
+    protected function flushBatch($batch)
+    {
+        $documentsProcessed = 0;
+
+        // process batches
+        $index = null;
+        foreach ($batch as $type => $changes) {
+            $typeObject = null;
+            foreach ($changes as $action => $documents) {
+                if (empty($documents)) {
+                    continue;
+                }
+                $index = $index ?: $this->getIndex();
+                $typeObject = $typeObject ?: $index->getType($type);
+                $documentsProcessed += count($documents);
+                switch ($action) {
+                    case self::UPDATES:
+                        $typeObject->addDocuments($documents);
+                        break;
+                    case self::DELETES:
+                        try {
+                            $typeObject->deleteDocuments($documents);
+                        } catch (NotFoundException $ex) {
+                            // no-op if not found
+                        }
+                        break;
+                    default:
+                        throw new LogicException("Invalid batch action {$action}");
+                }
+            }
+        }
+        // Refresh if any documents updated
+        if ($documentsProcessed && $index) {
+            $index->refresh();
+        }
+        return $documentsProcessed;
     }
 
     /**
