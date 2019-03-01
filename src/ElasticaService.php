@@ -59,7 +59,7 @@ class ElasticaService
      * Unprocessed batch operations.
      * Many-depth array:
      *  - First level is batch depth (e.g. nested batching)
-     *  - Second level is associative arry of types
+     *  - Second level is associative array of types
      *  - Third level is a pair of keys 'index' (add/update) and 'delete' (remove)
      *  - Fourth level is the list of documents to index / delete
      *
