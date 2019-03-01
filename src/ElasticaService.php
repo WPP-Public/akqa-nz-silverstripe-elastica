@@ -305,19 +305,20 @@ class ElasticaService
         if (!is_string($action) || !in_array($action, [self::DELETES, self::UPDATES])) {
             throw new InvalidArgumentException("Invalid action argument");
         }
-        $level = count($this->batches) - 1;
+        $batchIndex = count($this->batches) - 1;
         // Ensure keys exist
-        if (!isset($this->batches[$level][$type])) {
-            $this->batches[$level][$type] = [];
+        if (!isset($this->batches[$batchIndex][$type])) {
+            $this->batches[$batchIndex][$type] = [];
         }
-        if (!isset($this->batches[$level][$type][self::DELETES])) {
-            $this->batches[$level][$type][self::DELETES] = [];
+        // Ensure that DELETES occur before UPDATES in all instances
+        if (!isset($this->batches[$batchIndex][$type][self::DELETES])) {
+            $this->batches[$batchIndex][$type][self::DELETES] = [];
         }
-        if (!isset($this->batches[$level][$type][self::UPDATES])) {
-            $this->batches[$level][$type][self::UPDATES] = [];
+        if (!isset($this->batches[$batchIndex][$type][self::UPDATES])) {
+            $this->batches[$batchIndex][$type][self::UPDATES] = [];
         }
         // Add document
-        $this->batches[$level][$type][$action][] = $document;
+        $this->batches[$batchIndex][$type][$action][] = $document;
     }
 
     /**
