@@ -4,7 +4,7 @@ Facilitates searching and indexing of SilverStripe CMS using ElasticSearch. We u
 
 This module makes it easy to use ElasticSearch with SilverStripe without limiting any of the functionality found in Elastica. Basically anything that can be done with Elastica alone can be done in conjunction with this module.
 
-This module is a fork of [SilverStripe's Elastica Module](https://github.com/silverstripe-australia/silverstripe-elastica). 
+This module supercedes [Symbiote's Elastica Module](https://github.com/symbiote-library/silverstripe-elastica), which was only supported up to SilverStripe 3.
 
 ## Features
 
