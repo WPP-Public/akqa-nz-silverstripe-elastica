@@ -156,7 +156,7 @@ class Searchable extends DataExtension
      */
     public function inheritedDatabaseFields()
     {
-        return $this->owner::getSchema()->fieldSpecs($this->owner->getClassName());
+        return $this->owner->getSchema()->fieldSpecs($this->owner->getClassName());
     }
 
     /**
