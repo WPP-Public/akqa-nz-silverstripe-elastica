@@ -645,7 +645,7 @@ class Searchable extends DataExtension
      * @param $fieldValue
      * @return string
      */
-    protected function formatBoolean($fieldValue): string
+    protected function formatBoolean($fieldValue)
     {
         return boolval($fieldValue) ? 'true' : 'false';
     }
