@@ -156,7 +156,7 @@ class Searchable extends DataExtension
      */
     public function inheritedDatabaseFields()
     {
-        return $this->owner::getSchema()->fieldSpecs($this->owner->getClassName());
+        return $this->owner->getSchema()->fieldSpecs($this->owner->getClassName());
     }
 
     /**
@@ -645,7 +645,7 @@ class Searchable extends DataExtension
      * @param $fieldValue
      * @return string
      */
-    protected function formatBoolean($fieldValue): string
+    protected function formatBoolean($fieldValue)
     {
         return boolval($fieldValue) ? 'true' : 'false';
     }

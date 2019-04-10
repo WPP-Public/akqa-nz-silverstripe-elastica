@@ -356,11 +356,18 @@ class ElasticaService
 
     /**
      * Creates the index and the type mappings.
+     *
+     * @param bool $recreate
      * @throws Exception
      */
-    public function define()
+    public function define($recreate = false)
     {
         $index = $this->getIndex();
+
+        if ($index->exists() && $recreate) {
+            // Delete the existing index so it can be recreated from scratch
+            $index->delete();
+        }
 
         if (!$index->exists()) {
             $this->createIndex();
