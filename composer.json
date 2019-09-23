@@ -28,7 +28,8 @@
 	},
 	"require": {
 		"ruflin/elastica": "3.1.0",
-		"symbiote/silverstripe-queuedjobs": "~2.10"
+		"symbiote/silverstripe-queuedjobs": "~2.10",
+		"php": ">=7.2"
 	},
 	"autoload": {
 		"psr-4": { "Heyday\\Elastica\\": "src/" }
