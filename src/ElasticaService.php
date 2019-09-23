@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 /**
  * A service used to interact with elastic search.
  */
-class ElasticaService extends \Object
+class ElasticaService extends \SS_Object
 {
 
     /**
