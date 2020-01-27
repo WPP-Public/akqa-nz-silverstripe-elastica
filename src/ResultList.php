@@ -7,8 +7,10 @@ use Elastica\Query;
 use Elastica\ResultSet;
 use Psr\Log\LoggerInterface;
 use SilverStripe\ORM\ArrayList;
+use SilverStripe\ORM\FieldType\DBHTMLText;
 use SilverStripe\ORM\SS_List;
 use SilverStripe\Versioned\Versioned;
+use SilverStripe\View\ArrayData;
 use SilverStripe\View\ViewableData;
 
 /**
@@ -188,7 +190,13 @@ class ResultList extends ViewableData implements SS_List
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
                     if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
-                        $this->resultsArray[] = $retrieved[$item->getType()][$item->getId()];
+                        $record = $retrieved[$item->getType()][$item->getId()];
+                        $record->highlights = new ArrayData(array_map(function ($highlights) {
+                            $field = new DBHTMLText();
+                            $field->setValue(join("", $highlights));
+                            return $field;
+                        }, $item->getHighlights()));
+                        $this->resultsArray[] = $record;
                     }
                 }
             }
