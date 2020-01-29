@@ -427,11 +427,7 @@ class Searchable extends DataExtension
     public function onBeforeDelete()
     {
         $this->service->remove($this->owner);
-        if ($this->getUseQueuedJobs()) {
-            $this->queueReindex();
-        } else {
-            $this->updateDependentClasses();
-        }
+        $this->updateDependentClasses();
     }
 
     /**
