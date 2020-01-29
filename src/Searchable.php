@@ -77,7 +77,7 @@ class Searchable extends DataExtension
     /**
      * @param boolean $queued
      */
-    protected function setUseQueuedJobs($queued)
+    public function setQueued($queued)
     {
         $this->queued = $queued;
     }
