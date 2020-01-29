@@ -1,6 +1,6 @@
 # Heyday's SilverStripe Elastica Module
 
-Facilitates searching and indexing of SilverStripe CMS using ElasticSearch. We use Elastica to do all the heavy lifting in terms of communication with the elastic search server. 
+Facilitates searching and indexing of SilverStripe CMS using ElasticSearch. We use Elastica to do all the heavy lifting in terms of communication with the elastic search server.
 
 This module makes it easy to use ElasticSearch with SilverStripe without limiting any of the functionality found in Elastica. Basically anything that can be done with Elastica alone can be done in conjunction with this module.
 
@@ -35,7 +35,7 @@ $ composer require heyday/silverstripe-elastica:~2.0
 mysite/_config/search.yml
 ```yaml
 Heyday\Elastica\ElasticaService: # Example of customising the index config on the elastic search server (completely optional).
-  index_config:  
+  index_config:
     analysis:
       analyzer:
         default :
@@ -65,7 +65,7 @@ SilverStripe\Core\Injector\Injector:
       - %$Elastica\Client
       - name-of-index  # name of the index on the elastic search server
       - %$Logger  # your error logger (must implement psr/log interface)
-      - 64MB      # increases memory limit while indexing 
+      - 64MB      # increases memory limit while indexing
 
 ```
 
@@ -83,7 +83,7 @@ Your\Namespace\Page:
     - MenuTitle
     - Content
     - MetaDescription
-    
+
 Your\Namespace\SpecialPageWithAdditionalFields:
   extensions:
     - Heyday\Elastica\Searchable # only needed if this page does not extend the 'Page' configured above
@@ -92,7 +92,7 @@ Your\Namespace\SpecialPageWithAdditionalFields:
     - BannerHeading
     - BannerCopy
     - SubHeading
-    
+
 Your\Namespace\SpecialPageWithRelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
@@ -101,7 +101,7 @@ Your\Namespace\SpecialPageWithRelatedDataObject:
     -
       RelatedDataObjects:
         type: nested
-    
+
 Your\Namespace\RelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
@@ -122,7 +122,7 @@ mysite/_config/search.yml
 Your\Namespace\Page:
   extensions:
     - Heyday\Elastica\Searchable
-  indexed_fields: 
+  indexed_fields:
     - Title
     - SomeOtherField
     -
@@ -147,7 +147,7 @@ class Page extends SiteTree
     {
         return 'some dynamic text or something';
     }
-    
+
     public function getSomeCustomFieldComplicatedConfig()
     {
         return 'the config does not have anyting to do with me';
@@ -247,7 +247,7 @@ To turn on queues, you will need the following config:
 SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\Searchable:
     properties:
-      Queued: true
+      queued: true
 ```
 
 You will also need to set up a cronjob (I know not very queue-like...):

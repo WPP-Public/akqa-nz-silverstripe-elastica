@@ -77,7 +77,7 @@ class Searchable extends DataExtension
     /**
      * @param boolean $queued
      */
-    protected function setUseQueuedJobs($queued)
+    public function setQueued($queued)
     {
         $this->queued = $queued;
     }
@@ -427,11 +427,7 @@ class Searchable extends DataExtension
     public function onBeforeDelete()
     {
         $this->service->remove($this->owner);
-        if ($this->getUseQueuedJobs()) {
-            $this->queueReindex();
-        } else {
-            $this->updateDependentClasses();
-        }
+        $this->updateDependentClasses();
     }
 
     /**
