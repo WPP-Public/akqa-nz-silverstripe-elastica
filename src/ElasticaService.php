@@ -425,7 +425,7 @@ class ElasticaService
         $classes = array();
         foreach (ClassInfo::subclassesFor(DataObject::class) as $candidate) {
             $candidateInstance = DataObject::singleton($candidate);
-            if ($candidateInstance->hasExtension($this->searchableExtensionClassName) && $candidate != 'Page') {
+            if ($candidateInstance->hasExtension($this->searchableExtensionClassName)) {
                 $classes[] = $candidate;
             }
         }
