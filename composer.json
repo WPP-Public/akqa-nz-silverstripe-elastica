@@ -28,7 +28,7 @@
 	},
 	"require": {
 		"ruflin/elastica": "5.3.1",
-		"symbiote/silverstripe-queuedjobs": "~2.10",
+		"symbiote/silverstripe-queuedjobs": "~3.1",
 		"php": ">=7.2"
 	},
 	"autoload": {
