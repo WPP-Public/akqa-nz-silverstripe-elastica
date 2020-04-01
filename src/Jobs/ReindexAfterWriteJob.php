@@ -79,6 +79,12 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 
         if (!$versionToIndex) {
             // No live version of the record to index
+            $this->addMessage(sprintf(
+                'No record of this object exists on "%s" at the time this job was run',
+                Versioned::get_reading_mode()
+            ));
+            $this->isComplete = true;
+
             return;
         }
 
