@@ -61,32 +61,36 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
         return QueuedJob::QUEUED;
     }
 
-
     /**
      * Lets process
      */
     public function process()
     {
-        if ($this->id && $this->class) {
-            $service = Injector::inst()->get('Heyday\Elastica\ElasticaService');
-            $reading_mode = Versioned::get_reading_mode();
-            Versioned::set_reading_mode('Stage.Live');
 
-            $versionToIndex = DataObject::get($this->class)->byID($this->id);
-            if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->ShowInSearch) {
-                $service->index($versionToIndex);
-            } else {
-                $service->remove($versionToIndex);
-            }
-
-            $this->updateDependentClasses($versionToIndex, $service);
-
-            Versioned::set_reading_mode($reading_mode);
-            $this->isComplete = true;
-            return;
-        } else {
+        if (!$this->id || !$this->class) {
+            // No valid data to index
             return;
         }
+
+        $service = Injector::inst()->get('Heyday\Elastica\ElasticaService');
+        $reading_mode = Versioned::get_reading_mode();
+        Versioned::set_reading_mode('Stage.Live');
+        $versionToIndex = DataObject::get($this->class)->byID($this->id);
+
+        if (!$versionToIndex) {
+            // No live version of the record to index
+            return;
+        }
+
+        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->ShowInSearch) {
+            $service->index($versionToIndex);
+        } else {
+            $service->remove($versionToIndex);
+        }
+
+        $this->updateDependentClasses($versionToIndex, $service);
+        Versioned::set_reading_mode($reading_mode);
+        $this->isComplete = true;
     }
 
     /**
