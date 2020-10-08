@@ -49,14 +49,14 @@ class ResultList extends ViewableData implements SS_List
         //Optimise the query by just getting back the ids and types
         $query->setStoredFields([
             '_id',
-            'type',
+            Searchable::TYPE_FIELD,
             'highlight'
         ]);
 
         //If we are in live reading mode, only return published documents
         if (Versioned::get_stage() == Versioned::LIVE) {
             $publishedFilter = new Query\BoolQuery();
-            $publishedFilter->addMust(new Query\Term([Searchable::$published_field => 'true']));
+            $publishedFilter->addMust(new Query\Term([Searchable::PUBLISHED_FIELD => 'true']));
             $query->setPostFilter($publishedFilter);
         }
 
@@ -181,7 +181,7 @@ class ResultList extends ViewableData implements SS_List
 
             if (is_array($found) || $found instanceof ArrayAccess) {
                 foreach ($found as $item) {
-                    $type = $item->getParam('type');
+                    $type = $item->getParam(Searchable::TYPE_FIELD);
                     if (!array_key_exists($type, $needed)) {
                         $needed[$type] = [$item->getId()];
                         $retrieved[$type] = [];
@@ -198,7 +198,7 @@ class ResultList extends ViewableData implements SS_List
 
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
-                    $type = $item->getParam('type');
+                    $type = $item->getParam(Searchable::TYPE_FIELD);
                     $id = $item->getId();
                     if (!isset($retrieved[$type][$id])) {
                         continue;

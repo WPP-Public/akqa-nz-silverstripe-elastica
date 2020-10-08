@@ -27,6 +27,10 @@ use function is_numeric;
  */
 class Searchable extends DataExtension
 {
+    public const TYPE_FIELD = 'type';
+
+    public const PUBLISHED_FIELD = 'SS_Published';
+
     /**
      * @config
      * @var array
@@ -60,11 +64,11 @@ class Searchable extends DataExtension
      * @config
      */
     private static $indexed_fields = [
-        'type'         => [
+        self::TYPE_FIELD      => [
             'type'  => 'keyword',
             'field' => 'ElasticaType',
         ],
-        'SS_Published' => [
+        self::PUBLISHED_FIELD => [
             'type'  => 'boolean',
             'field' => 'ElasticaPublishedStatus',
         ]
