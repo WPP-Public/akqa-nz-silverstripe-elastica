@@ -27,6 +27,7 @@ class ReindexTask extends BuildTask
      */
     public function __construct(ElasticaService $service)
     {
+        parent::__construct();
         $this->service = $service;
     }
 

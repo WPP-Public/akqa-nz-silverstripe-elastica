@@ -8,10 +8,12 @@ use Elastica\Exception\NotFoundException;
 use Elastica\Index;
 use Elastica\Query;
 use Elastica\Response;
+use Elastica\ResultSet;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
 use Psr\Log\LoggerInterface;
+use ReflectionException;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
@@ -76,7 +78,7 @@ class ElasticaService
      *
      * @param Client               $client
      * @param string               $indexName
-     * @param LoggerInterface|null $logger Increases the memory limit while indexing.
+     * @param LoggerInterface|null $logger         Increases the memory limit while indexing.
      * @param string               $indexingMemory A memory limit string, such as "64M".
      * @param string               $searchableExtensionClassName
      */
@@ -120,10 +122,10 @@ class ElasticaService
 
     /**
      * Performs a search query and returns either a ResultList (SS template compatible) or an Elastica\ResultSet
-     * @param \Elastica\Query|string|array $query
-     * @param array                        $options Options defined in \Elastica\Search
-     * @param bool                         $returnResultList
-     * @return ResultList | \Elastica\ResultSet
+     * @param Query|string|array $query
+     * @param array              $options Options defined in \Elastica\Search
+     * @param bool               $returnResultList
+     * @return ResultList | ResultSet
      */
     public function search($query, $options = null, $returnResultList = true)
     {
@@ -200,8 +202,7 @@ class ElasticaService
                 return true;
             }
 
-            $type = $index->getType($typeName);
-            $response = $type->addDocument($document);
+            $response = $index->addDocument($document);
             $index->refresh();
 
             return $response;
@@ -226,7 +227,7 @@ class ElasticaService
      * For example, you might call batch with a closure that initiates ->index() on 20 records.
      * On the conclusion of this closure, those 20 updates will be batched together into a single update
      *
-     * @param callable $callback Callback within which to batch updates
+     * @param callable $callback           Callback within which to batch updates
      * @param int      $documentsProcessed Number of documents processed during this batch
      * @return mixed result of $callback
      * @throws Exception
@@ -265,15 +266,14 @@ class ElasticaService
                     continue;
                 }
                 $index = $index ?: $this->getIndex();
-                $typeObject = $typeObject ?: $index->getType($type);
                 $documentsProcessed += count($documents);
                 switch ($action) {
                     case self::UPDATES:
-                        $typeObject->addDocuments($documents);
+                        $index->addDocuments($documents);
                         break;
                     case self::DELETES:
                         try {
-                            $typeObject->deleteDocuments($documents);
+                            $index->deleteDocuments($documents);
                         } catch (NotFoundException $ex) {
                             // no-op if not found
                         }
@@ -293,7 +293,7 @@ class ElasticaService
     /**
      * Add document to batch query
      *
-     * @param string   $type elasticsearch type name
+     * @param string   $type   elasticsearch type name
      * @param string   $action self::DELETES or self::UPDATES
      * @param Document $document
      */
@@ -343,8 +343,7 @@ class ElasticaService
                 return true;
             }
 
-            $type = $index->getType($typeName);
-            return $type->deleteDocument($document);
+            return $index->deleteById($document->getId());
         } catch (NotFoundException $ex) {
             // If deleted records already were deleted, treat as non-error
             return null;
@@ -379,8 +378,7 @@ class ElasticaService
 
             $mapping = $sng->getElasticaMapping();
             if ($mapping) {
-                $mapping->setType($index->getType($sng->getElasticaType()));
-                $mapping->send();
+                $mapping->send($index);
             }
         }
     }
@@ -419,6 +417,7 @@ class ElasticaService
      * Gets the classes which are indexed (i.e. have the extension applied).
      *
      * @return array
+     * @throws ReflectionException
      */
     public function getIndexedClasses()
     {
