@@ -34,6 +34,7 @@
     "require": {
         "php": ">=7.2",
         "ruflin/elastica": "^7",
+        "elasticsearch/elasticsearch": "~7.3.0",
         "symbiote/silverstripe-queuedjobs": "^4"
     },
     "require-dev": {
