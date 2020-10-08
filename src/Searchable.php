@@ -578,7 +578,7 @@ class Searchable extends DataExtension
         // Detect attachment
         if (isset($params['type']) && $params['type'] === 'attachment') {
             /** @var File $file */
-            $file = $this->owner->$fieldName();
+            $file = $this->owner->relField($fieldName);
             if (!$file instanceof File || !$file->exists()) {
                 return [];
             }
@@ -593,7 +593,7 @@ class Searchable extends DataExtension
         }
 
         // Get item from parent
-        $relatedList = $this->owner->$fieldName();
+        $relatedList = $this->owner->relField($fieldName);
         if (!$relatedList) {
             return [];
         }
