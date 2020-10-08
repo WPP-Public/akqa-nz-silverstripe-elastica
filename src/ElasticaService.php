@@ -389,14 +389,16 @@ class ElasticaService
      */
     public function refresh()
     {
-        $reading_mode = Versioned::get_reading_mode();
-        Versioned::set_reading_mode('Stage.Live');
+        Versioned::withVersionedMode(function () {
+            Versioned::set_stage(Versioned::LIVE);
 
-        foreach ($this->getIndexedClasses() as $class) {
-            //Only index types (or classes) that are not just supporting other index types
-            if (!Config::inst()->get($class, 'supporting_type')) {
-                /** @var DataObject $record */
-                foreach ($class::get() as $record) {
+            foreach ($this->getIndexedClasses() as $class) {
+                //Only index types (or classes) that are not just supporting other index types
+                if (Config::inst()->get($class, 'supporting_type')) {
+                    continue;
+                }
+
+                foreach (DataObject::get($class) as $record) {
                     // Only index records with Show In Search enabled, or those that don't expose that fielid
                     if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
                         if ($this->index($record)) {
@@ -409,8 +411,7 @@ class ElasticaService
                     }
                 }
             }
-        }
-        Versioned::set_reading_mode($reading_mode);
+        });
     }
 
     /**

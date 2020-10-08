@@ -49,7 +49,6 @@ class ResultList extends ViewableData implements SS_List
         //Optimise the query by just getting back the ids and types
         $query->setStoredFields(array(
             '_id',
-            '_type',
             'highlight'
         ));
 
@@ -181,15 +180,13 @@ class ResultList extends ViewableData implements SS_List
 
             if (is_array($found) || $found instanceof ArrayAccess) {
                 foreach ($found as $item) {
-                    $type = $item->getType();
-
+                    $type = $item->getParam('type');
                     if (!array_key_exists($type, $needed)) {
-                        $needed[$type] = array($item->getId());
-                        $retrieved[$type] = array();
+                        $needed[$type] = [$item->getId()];
+                        $retrieved[$type] = [];
                     } else {
                         $needed[$type][] = $item->getId();
                     }
-
                 }
 
                 foreach ($needed as $class => $ids) {
@@ -200,22 +197,25 @@ class ResultList extends ViewableData implements SS_List
 
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
-                    if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
-                        $highlights = $item->getHighlights();
-                        $highlightsArray = [];
-
-                        foreach ($highlights as $field => $highlight) {
-                            $concatenatedValue = '';
-                            foreach ($highlight as $key => $value) {
-                                $concatenatedValue .= $value;
-                            }
-                            $highlightsArray[$field] = $concatenatedValue;
-                        }
-
-                        //add Highlights property
-                        $retrieved[$item->getType()][$item->getId()]->highlights = new ArrayData($highlightsArray);
-                        $this->resultsArray[] = $retrieved[$item->getType()][$item->getId()];
+                    $type = $item->getParam('type');
+                    $id = $item->getId();
+                    if (!isset($retrieved[$type][$id])) {
+                        continue;
                     }
+
+                    $highlights = $item->getHighlights();
+                    $highlightsArray = [];
+                    foreach ($highlights as $field => $highlight) {
+                        $concatenatedValue = '';
+                        foreach ($highlight as $key => $value) {
+                            $concatenatedValue .= $value;
+                        }
+                        $highlightsArray[$field] = $concatenatedValue;
+                    }
+
+                    //add Highlights property
+                    $retrieved[$type][$id]->highlights = new ArrayData($highlightsArray);
+                    $this->resultsArray[] = $retrieved[$type][$id];
                 }
             }
         }

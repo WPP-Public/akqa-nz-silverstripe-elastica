@@ -54,10 +54,21 @@ class Searchable extends DataExtension
     ];
 
     /**
+     * ElasticSearch 7.0 compatibility: Use a custom 'type' field instead of deprecated _type
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html#_custom_type_field
+     *
+     * @var array
+     * @config
+     */
+    private static $indexed_fields = [
+        'type' => ['type' => 'keyword'],
+    ];
+
+    /**
      * @config
      * @var array
      */
-    private static $exclude_relations = array();
+    private static $exclude_relations = [];
 
     /**
      * @var ElasticaService
@@ -355,8 +366,11 @@ class Searchable extends DataExtension
                 continue;
             }
 
-            // Check field exists on parent
-            if ($this->owner->hasField($fieldName)) {
+            if ($fieldName === 'type') {
+                // Check 'type' field
+                $fieldValues['type'] = $this->getElasticaType();
+            } elseif ($this->owner->hasField($fieldName)) {
+                // Check field exists on parent
                 $params = $this->getExtraFieldParams($fieldName, $params);
                 $fieldValue = $this->formatValue($params, $this->owner->$fieldName);
                 $fieldValues[$fieldName] = $fieldValue;
