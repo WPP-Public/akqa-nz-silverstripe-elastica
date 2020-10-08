@@ -15,6 +15,7 @@ use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
+use SilverStripe\ORM\ValidationException;
 use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use function is_numeric;
@@ -26,8 +27,6 @@ use function is_numeric;
  */
 class Searchable extends DataExtension
 {
-    public static $published_field = 'SS_Published';
-
     /**
      * @config
      * @var array
@@ -61,7 +60,14 @@ class Searchable extends DataExtension
      * @config
      */
     private static $indexed_fields = [
-        'type' => ['type' => 'keyword'],
+        'type'         => [
+            'type'  => 'keyword',
+            'field' => 'ElasticaType',
+        ],
+        'SS_Published' => [
+            'type'  => 'boolean',
+            'field' => 'ElasticaPublishedStatus',
+        ]
     ];
 
     /**
@@ -154,11 +160,29 @@ class Searchable extends DataExtension
     }
 
     /**
+     * Get document type
+     *
      * @return string
      */
     public function getElasticaType()
     {
         return get_class($this->owner);
+    }
+
+    /**
+     * Get published status
+     *
+     * @return bool
+     */
+    public function getElasticaPublishedStatus()
+    {
+        $isLive = true;
+        if ($this->owner->hasExtension(Versioned::class)) {
+            if ($this->owner instanceof SiteTree) {
+                $isLive = $this->owner->isPublished();
+            }
+        }
+        return (bool)$isLive;
     }
 
     /**
@@ -178,33 +202,20 @@ class Searchable extends DataExtension
      *
      * @return array
      */
-    protected function getElasticaFields()
-    {
-        return array_merge(
-            [
-                self::$published_field => [
-                    'type' => 'boolean'
-                ]
-            ],
-            $this->getSearchableFields()
-        );
-    }
-
-
-    /**
-     * Get the searchable fields for the owner data object
-     *
-     * @return array
-     */
-    public function getSearchableFields()
+    public function getElasticaFields()
     {
         $result = [];
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
-            // Check nested relation class
+            $field = isset($params['field'])
+                ? $params['field']
+                : $fieldName;
             $relationClass = isset($params['relationClass'])
                 ? $params['relationClass']
                 : $this->owner->getRelationClass($fieldName);
-            unset($params['relationClass']); // Don't send to elasticsearch
+
+            // Don't send these to elasticsearch
+            unset($params['relationClass']);
+            unset($params['field']);
 
             // Build nested field from relation
             if ($relationClass) {
@@ -215,13 +226,25 @@ class Searchable extends DataExtension
             }
 
             // Get extra params
-            $params = $this->getExtraFieldParams($fieldName, $params);
+            $params = $this->getExtraFieldParams($field, $params);
 
             // Add field
             $result[$fieldName] = $params;
         }
 
         return $result;
+    }
+
+    /**
+     * Get elastica fields
+     *
+     * @return array
+     * @deprecated Use getElasticaFields()
+     */
+    public function getSearchableFields()
+    {
+        Deprecation::notice('3.0.0', 'Just call getElasticaFields directly');
+        return $this->getElasticaFields();
     }
 
     /**
@@ -233,8 +256,8 @@ class Searchable extends DataExtension
      */
     protected function getReferenceSearchableFields()
     {
-        Deprecation::notice('2.0.0', 'Use getSearchableFields instead');
-        return $this->getSearchableFields();
+        Deprecation::notice('2.0.0', 'Use getElasticaFields instead');
+        return $this->getElasticaFields();
     }
 
     /**
@@ -308,21 +331,6 @@ class Searchable extends DataExtension
     }
 
     /**
-     * @param Document $document
-     */
-    protected function setPublishedStatus($document)
-    {
-        $isLive = true;
-        if ($this->owner->hasExtension(Versioned::class)) {
-            if ($this->owner instanceof SiteTree) {
-                $isLive = $this->owner->isPublished();
-            }
-        }
-
-        $document->set(self::$published_field, (bool)$isLive);
-    }
-
-    /**
      * Assigns value to the fields indexed from getElasticaFields()
      *
      * @return Document
@@ -330,9 +338,6 @@ class Searchable extends DataExtension
     public function getElasticaDocument()
     {
         $document = new Document($this->owner->ID);
-
-        // Set published state
-        $this->setPublishedStatus($document);
 
         // Add all nested field values
         foreach ($this->getSearchableFieldValues() as $field => $value) {
@@ -356,7 +361,9 @@ class Searchable extends DataExtension
             $relationClass = isset($params['relationClass'])
                 ? $params['relationClass']
                 : $this->owner->getRelationClass($fieldName);
-            unset($params['relationClass']); // Don't send to elasticsearch
+            $field = isset($params['field'])
+                ? $params['field']
+                : $fieldName;
 
             // Build nested field from relation
             if ($relationClass) {
@@ -366,13 +373,11 @@ class Searchable extends DataExtension
                 continue;
             }
 
-            if ($fieldName === 'type') {
-                // Check 'type' field
-                $fieldValues['type'] = $this->getElasticaType();
-            } elseif ($this->owner->hasField($fieldName)) {
+            // Get value from object
+            if ($this->owner->hasField($field)) {
                 // Check field exists on parent
-                $params = $this->getExtraFieldParams($fieldName, $params);
-                $fieldValue = $this->formatValue($params, $this->owner->$fieldName);
+                $params = $this->getExtraFieldParams($field, $params);
+                $fieldValue = $this->formatValue($params, $this->owner->relField($field));
                 $fieldValues[$fieldName] = $fieldValue;
             }
         }
@@ -412,7 +417,7 @@ class Searchable extends DataExtension
             return;
         }
 
-        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->ShowInSearch) {
+        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->getField('ShowInSearch')) {
             $this->service->index($versionToIndex);
         } else {
             $this->service->remove($versionToIndex);
@@ -487,7 +492,7 @@ class Searchable extends DataExtension
 
                 foreach ($list as $object) {
                     if ($object instanceof DataObject && $object->hasExtension(Searchable::class)) {
-                        if (!$object->hasField('ShowInSearch') || $object->ShowInSearch) {
+                        if (!$object->hasField('ShowInSearch') || $object->getField('ShowInSearch')) {
                             $this->service->index($object);
                         } else {
                             $this->service->remove($object);
@@ -539,7 +544,7 @@ class Searchable extends DataExtension
         }
 
         // Get nested fields
-        $nestedFields = $related->getSearchableFields();
+        $nestedFields = $related->getElasticaFields();
 
         // Determine if merging into parent as either a multilevel object (default)
         // or nested objects (requires 'nested' param to be set)
@@ -640,7 +645,7 @@ class Searchable extends DataExtension
 
         // Bootstrap set with empty arrays for each top level key
         // This also ensures we set empty data if $relatedList is empty
-        foreach ($relatedSingleton->getSearchableFields() as $relatedFieldName => $spec) {
+        foreach ($relatedSingleton->getElasticaFields() as $relatedFieldName => $spec) {
             $nestedName = "{$fieldName}_{$relatedFieldName}";
             $fieldValues[$nestedName] = [];
         }
@@ -666,6 +671,7 @@ class Searchable extends DataExtension
 
     /**
      * Format a scalar value for the index document
+     * Note: Respects array values
      *
      * @param array $params Spec params
      * @param mixed $fieldValue
@@ -673,6 +679,13 @@ class Searchable extends DataExtension
      */
     protected function formatValue($params, $fieldValue)
     {
+        // Map array of values safely
+        if (is_array($fieldValue)) {
+            return array_map(function ($value) use ($params) {
+                return $this->formatValue($params, $value);
+            }, $fieldValue);
+        }
+
         $type = isset($params['type']) ? $params['type'] : null;
         switch ($type) {
             case 'boolean':
@@ -718,6 +731,7 @@ class Searchable extends DataExtension
     /**
      * Trigger a queuedjob to update this item.
      * Require queuedjobs to be setup.
+     * @throws ValidationException
      */
     protected function queueReindex()
     {

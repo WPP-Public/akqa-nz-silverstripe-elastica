@@ -47,13 +47,14 @@ class ResultList extends ViewableData implements SS_List
         parent::__construct();
 
         //Optimise the query by just getting back the ids and types
-        $query->setStoredFields(array(
+        $query->setStoredFields([
             '_id',
+            'type',
             'highlight'
-        ));
+        ]);
 
         //If we are in live reading mode, only return published documents
-        if (Versioned::get_reading_mode() == Versioned::DEFAULT_MODE) {
+        if (Versioned::get_stage() == Versioned::LIVE) {
             $publishedFilter = new Query\BoolQuery();
             $publishedFilter->addMust(new Query\Term([Searchable::$published_field => 'true']));
             $query->setPostFilter($publishedFilter);

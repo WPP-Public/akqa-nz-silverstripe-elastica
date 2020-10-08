@@ -101,6 +101,7 @@ Your\Namespace\SpecialPageWithRelatedDataObject:
     -
       RelatedDataObjects:
         type: nested
+        relationClass: App\DataObjects\Tags # Will be pulled from has_many / many_many, but you can specify it here too
 
 Your\Namespace\RelatedDataObject:
   extensions:
@@ -126,11 +127,15 @@ Your\Namespace\Page:
     - Title
     - SomeOtherField
     -
+      TitleAlias:
+        type: text
+        field: Title # You can specify a custom internal field value with 'field'
+    -
       SomeCustomFieldSimple:
-        type: string
+        type: text
     -
       SomeCustomFieldComplicatedConfig:
-        type: string
+        type: text
         index_anayser: nGram_analyser
         search_analyser: whitespace_analyser
         stored: true
