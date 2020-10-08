@@ -18,7 +18,7 @@ This module supercedes [Symbiote's Elastica Module](https://github.com/symbiote-
 
 ## Compatibility
 
-This release is compatible with all elasticsearch 5.x releases.
+This release should be compatibly with all ElasticSearch 7.0 and above versions. May work with elasticsearch 6.
 This release requires SilverStripe 4.x
 
 If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x), please try the 1.0 release of this module
