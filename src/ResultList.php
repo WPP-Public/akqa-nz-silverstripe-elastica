@@ -38,7 +38,8 @@ class ResultList extends ViewableData implements SS_List
         //Optimise the query by just getting back the ids and types
         $query->setStoredFields(array(
             '_id',
-            '_type'
+            '_type',
+            'highlight'
         ));
 
         //If we are in live reading mode, only return published documents
@@ -177,6 +178,7 @@ class ResultList extends ViewableData implements SS_List
                     } else {
                         $needed[$type][] = $item->getId();
                     }
+
                 }
 
                 foreach ($needed as $class => $ids) {
@@ -188,6 +190,20 @@ class ResultList extends ViewableData implements SS_List
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
                     if (array_key_exists($item->getId(), $retrieved[$item->getType()])) {
+
+                        $highlights = $item->getHighlights();
+                        $highlightsArray = [];
+
+                        foreach ($highlights as $field => $highlight) {
+                            $concatenatedValue = '';
+                            foreach ($highlight as $key => $value) {
+                                $concatenatedValue .= $value;
+                            }
+                            $highlightsArray[$field] = $concatenatedValue;
+                        }
+
+                        //add Highlights property
+                        $retrieved[$item->getType()][$item->getId()]->highlights = new \ArrayData($highlightsArray);
                         $this->resultsArray[] = $retrieved[$item->getType()][$item->getId()];
                     }
                 }
