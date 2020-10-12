@@ -66,6 +66,7 @@ class Searchable extends DataExtension
     private static $indexed_fields = [
         self::TYPE_FIELD      => [
             'type'  => 'keyword',
+            'store' => 'true',
             'field' => 'ElasticaType',
         ],
         self::PUBLISHED_FIELD => [

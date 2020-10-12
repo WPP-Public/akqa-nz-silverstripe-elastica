@@ -10,6 +10,7 @@ use Elastica\Query;
 use Elastica\Result;
 use Elastica\ResultSet;
 use Exception;
+use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
@@ -181,7 +182,10 @@ class ResultList extends ViewableData implements SS_List
 
             if (is_array($found) || $found instanceof ArrayAccess) {
                 foreach ($found as $item) {
-                    $type = $item->getParam(Searchable::TYPE_FIELD);
+                    $type = $item->{Searchable::TYPE_FIELD};
+                    if (empty($type)) {
+                        throw new LogicException("type field not available");
+                    }
                     if (!array_key_exists($type, $needed)) {
                         $needed[$type] = [$item->getId()];
                         $retrieved[$type] = [];
@@ -198,7 +202,10 @@ class ResultList extends ViewableData implements SS_List
 
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
-                    $type = $item->getParam(Searchable::TYPE_FIELD);
+                    $type = $item->{Searchable::TYPE_FIELD};
+                    if (empty($type)) {
+                        throw new LogicException("type field not available");
+                    }
                     $id = $item->getId();
                     if (!isset($retrieved[$type][$id])) {
                         continue;
