@@ -18,6 +18,7 @@ use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
+use SilverStripe\Core\Environment;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\Versioned\Versioned;
 
@@ -136,21 +137,18 @@ class ElasticaService
     }
 
     /**
+     * Creates the index
+     *
      * @throws Exception
      */
     public function createIndex()
     {
-        $index = $this->getIndex();
-
-        if ($config = $this->getIndexConfig()) {
-            try {
-                $index->create($config, true);
-            } catch (Exception $e) {
-                $this->exception($e);
-            }
-        } else {
-            $index->create();
-        }
+        return $this->runQuery(function () {
+            $index = $this->getIndex();
+            $config = $this->getIndexConfig() ?: [];
+            $forceRecreate = !empty($config);
+            return $index->create($config, $forceRecreate);
+        });
     }
 
     /**
@@ -160,12 +158,10 @@ class ElasticaService
      */
     public function deleteIndex()
     {
-        $index = $this->getIndex();
-        try {
-            $index->delete();
-        } catch (Exception $e) {
-            $this->exception($e);
-        }
+        return $this->runQuery(function () {
+            $index = $this->getIndex();
+            return $index->delete();
+        });
     }
 
     /**
@@ -184,32 +180,29 @@ class ElasticaService
 
         if (!$this->indexingMemorySet && $this->indexingMemory) {
             if ($this->indexingMemory == 'unlimited') {
-                ini_set('memory_limit', -1);
+                Environment::increaseMemoryLimitTo();
             } else {
-                ini_set('memory_limit', $this->indexingMemory);
+                Environment::increaseMemoryLimitTo($this->indexingMemory);
             }
             $this->indexingMemorySet = true;
         }
 
-        try {
-            $document = $record->getElasticaDocument();
-            $typeName = $record->getElasticaType();
-            $index = $this->getIndex();
+        $document = $record->getElasticaDocument();
+        $typeName = $record->getElasticaType();
+        $index = $this->getIndex();
 
-            // If batching
-            if ($this->isBatching()) {
-                $this->batchDocument($typeName, self::UPDATES, $document);
-                return true;
-            }
+        // If batching
+        if ($this->isBatching()) {
+            $this->batchDocument($typeName, self::UPDATES, $document);
+            return true;
+        }
 
+        // Add document
+        return $this->runQuery(function () use ($index, $document) {
             $response = $index->addDocument($document);
             $index->refresh();
-
             return $response;
-        } catch (Exception $e) {
-            $this->exception($e);
-            return null;
-        }
+        });
     }
 
     /**
@@ -470,5 +463,53 @@ class ElasticaService
             $exception->getLine()
         );
         $this->logger->error($message);
+    }
+
+    /**
+     * Check if response has any errors
+     *
+     * @param Response|null $response
+     * @throws Exception
+     */
+    protected function logResponse(Response $response = null)
+    {
+        // Ignore empty or non-error responses
+        if (!$response || $response->isOk()) {
+            return;
+        }
+
+        // Get error message
+        $data = $response->getData();
+        $errorMessage = $data['message']
+            ?? $response->getErrorMessage()
+                ?: sprintf("HTTP %d error", $response->getStatus());
+        $message = "Elastica server error: $errorMessage";
+
+        // If no logger specified expose error normally
+        if (!$this->logger) {
+            throw new Exception($message, $response->getStatus());
+        }
+
+        // Log message
+        $this->logger->error($message);
+    }
+
+    /**
+     * Run elastic search query
+     *
+     * @param callable $callback A callback that generates an Elastica Response object
+     * @return Response The response
+     * @throws Exception
+     */
+    protected function runQuery(callable $callback)
+    {
+        $response = null;
+        try {
+            $response = call_user_func($callback);
+            $this->logResponse($response);
+        } catch (Exception $ex) {
+            $this->exception($ex);
+        }
+        return $response;
     }
 }
