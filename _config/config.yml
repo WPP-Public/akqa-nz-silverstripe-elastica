@@ -4,10 +4,10 @@ Name: Heyday Elastica Config
 SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\ReindexTask:
     constructor:
-      - %$Heyday\Elastica\ElasticaService
+      - '%$Heyday\Elastica\ElasticaService'
   Heyday\Elastica\Searchable:
     constructor:
-      - %$Heyday\Elastica\ElasticaService
+      - '%$Heyday\Elastica\ElasticaService'
   ManyManyList:
     class: Heyday\Elastica\ManyManyList
 
