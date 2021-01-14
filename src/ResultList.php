@@ -14,6 +14,7 @@ use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\Limitable;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\SS_List;
 use SilverStripe\Versioned\Versioned;
@@ -24,7 +25,7 @@ use Traversable;
 /**
  * A list wrapper around the results from a query. Note that not all operations are implemented.
  */
-class ResultList extends ViewableData implements SS_List
+class ResultList extends ViewableData implements SS_List, Limitable
 {
 
     /**
