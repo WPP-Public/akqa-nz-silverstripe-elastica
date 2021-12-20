@@ -182,7 +182,10 @@ class ResultList extends ViewableData implements SS_List, Limitable
 
             if (is_array($found) || $found instanceof ArrayAccess) {
                 foreach ($found as $item) {
-                    $type = $item->{Searchable::TYPE_FIELD};
+                    $type = isset($item->{Searchable::TYPE_FIELD}[0])
+                      ? $item->{Searchable::TYPE_FIELD}[0]
+                      : false;
+
                     if (empty($type)) {
                         throw new LogicException("type field not available");
                     }
@@ -202,7 +205,10 @@ class ResultList extends ViewableData implements SS_List, Limitable
 
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
-                    $type = $item->{Searchable::TYPE_FIELD};
+                    $type = isset($item->{Searchable::TYPE_FIELD}[0])
+                      ? $item->{Searchable::TYPE_FIELD}[0]
+                      : false;
+
                     if (empty($type)) {
                         throw new LogicException("type field not available");
                     }
