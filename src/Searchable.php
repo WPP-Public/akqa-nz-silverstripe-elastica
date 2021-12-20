@@ -671,7 +671,7 @@ class Searchable extends DataExtension
      */
     protected function formatBoolean($fieldValue)
     {
-        return boolval($fieldValue) ? 'true' : 'false';
+        return boolval($fieldValue) ? true : false;
     }
 
     /**

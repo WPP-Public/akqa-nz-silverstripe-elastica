@@ -7,7 +7,6 @@ use ArrayIterator;
 use BadMethodCallException;
 use Elastica\Index;
 use Elastica\Query;
-use Elastica\Result;
 use Elastica\ResultSet;
 use Exception;
 use LogicException;
@@ -58,7 +57,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
         //If we are in live reading mode, only return published documents
         if (Versioned::get_stage() == Versioned::LIVE) {
             $publishedFilter = new Query\BoolQuery();
-            $publishedFilter->addMust(new Query\Term([Searchable::PUBLISHED_FIELD => 'true']));
+            $publishedFilter->addMust(new Query\Term([Searchable::PUBLISHED_FIELD => true]));
             $query->setPostFilter($publishedFilter);
         }
 
