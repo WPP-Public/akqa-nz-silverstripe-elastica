@@ -36,19 +36,19 @@ mysite/_config/search.yml
 ```yaml
 Heyday\Elastica\ElasticaService: # Example of customising the index config on the elastic search server (completely optional).
   index_config:
-    analysis:
-      analyzer:
-        default :
-          type : custom
-          tokenizer : standard
-          filter :
-            - standard
-            - lowercase
-            - stemming_filter
-      filter:
-        stemming_filter:
-          type: snowball
-          language: English
+    settings:
+      analysis:
+        analyzer:
+          default:
+            type: custom
+            tokenizer: standard
+            filter:
+              - lowercase
+              - stemming_filter
+        filter:
+          stemming_filter:
+            type: snowball
+            language: English
 
 ---
 Only:
