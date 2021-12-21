@@ -233,6 +233,36 @@ class SearchController extends Page_Controller
     }
 
     /**
+     * Query all Page fields and RelatedObjects nested fields.
+     *
+     * @return bool|\SilverStripe\ORM\PaginatedList
+     */
+    public function ResultsWithRelatedObjects()
+    {
+        $request = $this->getRequest();
+
+        if ($string = $request->requestVar('for')) {
+
+            $queryString = new \Elastica\Query\QueryString(strval($string));
+
+            $boolQuery = new \Elastica\Query\BoolQuery();
+
+            $nestedQuery = new \Elastica\Query\Nested();
+            $nestedQuery->setPath('RelatedDataObjects');
+            $nestedQuery->setQuery($queryString);
+
+            $boolQuery->addShould($queryString);
+            $boolQuery->addShould($nestedQuery);
+
+            $results = $this->searchService->search($boolQuery);
+
+            return new \SilverStripe\ORM\PaginatedList($results, $request);
+        }
+
+        return false;
+    }
+
+    /**
      * @return mixed
      */
     public function SearchString()
