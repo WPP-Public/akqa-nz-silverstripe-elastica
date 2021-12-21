@@ -136,9 +136,9 @@ Your\Namespace\Page:
     -
       SomeCustomFieldComplicatedConfig:
         type: text
-        index_anayser: nGram_analyser
-        search_analyser: whitespace_analyser
-        stored: true
+        analyzer: nGram_analyser # Must reference analyzer defined on index_config
+        search_analyzer: whitespace_analyser # Must reference analyzer defined on index_config
+        store: true
 
 ```
 
