@@ -26,7 +26,6 @@ use Traversable;
  */
 class ResultList extends ViewableData implements SS_List, Limitable
 {
-
     /**
      * @var Index
      */
@@ -137,7 +136,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     }
 
     /**
-     * @param     $limit
+     * @param int $limit
      * @param int $offset
      * @return ResultList
      */
@@ -212,18 +211,23 @@ class ResultList extends ViewableData implements SS_List, Limitable
                     if (empty($type)) {
                         throw new LogicException("type field not available");
                     }
+
                     $id = $item->getId();
+
                     if (!isset($retrieved[$type][$id])) {
                         continue;
                     }
 
                     $highlights = $item->getHighlights();
                     $highlightsArray = [];
+
                     foreach ($highlights as $field => $highlight) {
                         $concatenatedValue = '';
+
                         foreach ($highlight as $key => $value) {
                             $concatenatedValue .= $value;
                         }
+
                         $highlightsArray[$field] = $concatenatedValue;
                     }
 
@@ -320,7 +324,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     /**
      * @return int
      */
-    public function count()
+    public function count(): int
     {
         return count($this->toArray());
     }
@@ -333,38 +337,59 @@ class ResultList extends ViewableData implements SS_List, Limitable
         return $this->getResults()->getTotalHits();
     }
 
-    public function offsetExists($offset)
+    /**
+     * @inheritdoc
+     */
+    public function offsetExists($offset): bool
     {
         $array = $this->toArray();
         return array_key_exists($offset, $array);
     }
 
+    /**
+     * @inheritdoc
+     */
     public function offsetGet($offset)
     {
         $array = $this->toArray();
         return isset($array[$offset]) ? $array[$offset] : null;
     }
 
+    /**
+     * @inheritdoc
+     */
     public function find($key, $value)
     {
         return $this->toArrayList()->find($key, $value);
     }
 
-    public function offsetSet($offset, $value)
+    /**
+     * @inheritdoc
+     */
+    public function offsetSet($offset, $value): void
     {
         throw new BadMethodCallException("ResultList cannot be modified in memory");
     }
 
-    public function offsetUnset($offset)
+    /**
+     * @inheritdoc
+     */
+    public function offsetUnset($offset): void
     {
         throw new BadMethodCallException("ResultList cannot be modified in memory");
     }
 
+    /**
+     * @inheritdoc
+     */
     public function add($item)
     {
         throw new BadMethodCallException("ResultList cannot be modified in memory");
     }
 
+    /**
+     * @inheritdoc
+     */
     public function remove($item)
     {
         throw new BadMethodCallException("ResultList cannot be modified in memory");

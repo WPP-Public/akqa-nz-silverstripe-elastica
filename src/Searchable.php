@@ -18,7 +18,6 @@ use SilverStripe\ORM\DataObjectSchema;
 use SilverStripe\ORM\ValidationException;
 use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
-use function is_numeric;
 
 /**
  * Adds elastic search integration to a data object.
@@ -27,8 +26,16 @@ use function is_numeric;
  */
 class Searchable extends DataExtension
 {
+    /**
+     * Key used by elastic to determine the type of document.
+     * @var string
+     */
     public const TYPE_FIELD = 'type';
 
+    /**
+     * Key added to every indexed document to determine published status.
+     * @var string
+     */
     public const PUBLISHED_FIELD = 'SS_Published';
 
     /**
@@ -182,11 +189,13 @@ class Searchable extends DataExtension
     public function getElasticaPublishedStatus()
     {
         $isLive = true;
+
         if ($this->owner->hasExtension(Versioned::class)) {
             if ($this->owner instanceof SiteTree) {
                 $isLive = $this->owner->isPublished();
             }
         }
+
         return (bool)$isLive;
     }
 
@@ -219,8 +228,7 @@ class Searchable extends DataExtension
                 : $this->owner->getRelationClass($fieldName);
 
             // Don't send these to elasticsearch
-            unset($params['relationClass']);
-            unset($params['field']);
+            unset($params['relationClass'], $params['field']);
 
             // Build nested field from relation
             if ($relationClass) {
@@ -667,11 +675,11 @@ class Searchable extends DataExtension
 
     /**
      * @param $fieldValue
-     * @return string
+     * @return bool
      */
     protected function formatBoolean($fieldValue)
     {
-        return boolval($fieldValue) ? true : false;
+        return boolval($fieldValue);
     }
 
     /**
@@ -722,14 +730,17 @@ class Searchable extends DataExtension
 
         // Guess type from $db spec
         $fieldType = DataObjectSchema::singleton()->fieldSpec($this->owner, $fieldName);
+
         if ($fieldType) {
             // Strip and check data type mapping
             $dataType = $this->stripDataTypeParameters($fieldType);
             $mappings = $this->owner->config()->get('elasticsearch_field_mappings');
+
             if (array_key_exists($dataType, $mappings)) {
                 $params['type'] = $mappings[$dataType];
             }
         }
+
         return $params;
     }
 

@@ -29,7 +29,7 @@ class ElasticaService
 {
     use Configurable;
 
-    const CONFIGURE_DISABLE_INDEXING = 'disable_indexing';
+    public const CONFIGURE_DISABLE_INDEXING = 'disable_indexing';
 
     /**
      * @var Client
@@ -70,9 +70,9 @@ class ElasticaService
      */
     protected $batches = [];
 
-    const UPDATES = 'updates';
+    public const UPDATES = 'updates';
 
-    const DELETES = 'deletes';
+    public const DELETES = 'deletes';
 
     /**
      * ElasticaService constructor.
@@ -504,12 +504,14 @@ class ElasticaService
     protected function runQuery(callable $callback)
     {
         $response = null;
+
         try {
             $response = call_user_func($callback);
             $this->logResponse($response);
         } catch (Exception $ex) {
             $this->exception($ex);
         }
+
         return $response;
     }
 }

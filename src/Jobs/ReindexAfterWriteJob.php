@@ -16,7 +16,6 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
  */
 class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
-
     /**
      *
      * get the instance to reindex and the service
