@@ -4,7 +4,7 @@ namespace Heyday\Elastica;
 
 use BadMethodCallException;
 use Elastica\Document;
-use Elastica\Type\Mapping;
+use Elastica\Mapping;
 use Exception;
 use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
@@ -15,9 +15,9 @@ use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
+use SilverStripe\ORM\ValidationException;
 use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
-use function is_numeric;
 
 /**
  * Adds elastic search integration to a data object.
@@ -26,38 +26,67 @@ use function is_numeric;
  */
 class Searchable extends DataExtension
 {
-    public static $published_field = 'SS_Published';
+    /**
+     * Key used by elastic to determine the type of document.
+     * @var string
+     */
+    public const TYPE_FIELD = 'type';
+
+    /**
+     * Key added to every indexed document to determine published status.
+     * @var string
+     */
+    public const PUBLISHED_FIELD = 'SS_Published';
 
     /**
      * @config
      * @var array
      */
-    public static $mappings = array(
+    private static $elasticsearch_field_mappings = [
         'PrimaryKey'  => 'integer',
         'ForeignKey'  => 'integer',
-        'DBClassName' => 'string',
+        'DBClassName' => 'keyword',
         'DBDatetime'  => 'date',
         'Boolean'     => 'boolean',
         'Decimal'     => 'double',
         'Double'      => 'double',
-        'Enum'        => 'string',
+        'Enum'        => 'keyword',
         'Float'       => 'float',
-        'HTMLText'    => 'string',
-        'HTMLVarchar' => 'string',
+        'HTMLText'    => 'text',
+        'HTMLVarchar' => 'text',
         'Int'         => 'integer',
         'Datetime'    => 'date',
-        'Text'        => 'string',
-        'Varchar'     => 'string',
+        'Text'        => 'text',
+        'Varchar'     => 'text',
         'Year'        => 'integer',
         'File'        => 'attachment',
         'Date'        => 'date'
-    );
+    ];
+
+    /**
+     * ElasticSearch 7.0 compatibility: Use a custom 'type' field instead of deprecated _type
+     * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html#_custom_type_field
+     *
+     * @var array
+     * @config
+     */
+    private static $indexed_fields = [
+        self::TYPE_FIELD      => [
+            'type'  => 'keyword',
+            'store' => 'true',
+            'field' => 'ElasticaType',
+        ],
+        self::PUBLISHED_FIELD => [
+            'type'  => 'boolean',
+            'field' => 'ElasticaPublishedStatus',
+        ]
+    ];
 
     /**
      * @config
      * @var array
      */
-    private static $exclude_relations = array();
+    private static $exclude_relations = [];
 
     /**
      * @var ElasticaService
@@ -106,7 +135,7 @@ class Searchable extends DataExtension
     /**
      * Returns an array of fields to be indexed. Additional configuration can be attached to these fields.
      *
-     * Format: array('FieldName' => array('type' => 'string'));
+     * Format: ['FieldName' => ['type' => 'text']];
      *
      * FieldName can be a field in the database or a method name
      *
@@ -143,11 +172,31 @@ class Searchable extends DataExtension
     }
 
     /**
+     * Get document type
+     *
      * @return string
      */
     public function getElasticaType()
     {
         return get_class($this->owner);
+    }
+
+    /**
+     * Get published status
+     *
+     * @return bool
+     */
+    public function getElasticaPublishedStatus()
+    {
+        $isLive = true;
+
+        if ($this->owner->hasExtension(Versioned::class)) {
+            if ($this->owner instanceof SiteTree) {
+                $isLive = $this->owner->isPublished();
+            }
+        }
+
+        return (bool)$isLive;
     }
 
     /**
@@ -167,33 +216,19 @@ class Searchable extends DataExtension
      *
      * @return array
      */
-    protected function getElasticaFields()
-    {
-        return array_merge(
-            [
-                self::$published_field => [
-                    'type' => 'boolean'
-                ]
-            ],
-            $this->getSearchableFields()
-        );
-    }
-
-
-    /**
-     * Get the searchable fields for the owner data object
-     *
-     * @return array
-     */
-    public function getSearchableFields()
+    public function getElasticaFields()
     {
         $result = [];
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
-            // Check nested relation class
+            $field = isset($params['field'])
+                ? $params['field']
+                : $fieldName;
             $relationClass = isset($params['relationClass'])
                 ? $params['relationClass']
                 : $this->owner->getRelationClass($fieldName);
-            unset($params['relationClass']); // Don't send to elasticsearch
+
+            // Don't send these to elasticsearch
+            unset($params['relationClass'], $params['field']);
 
             // Build nested field from relation
             if ($relationClass) {
@@ -204,13 +239,25 @@ class Searchable extends DataExtension
             }
 
             // Get extra params
-            $params = $this->getExtraFieldParams($fieldName, $params);
+            $params = $this->getExtraFieldParams($field, $params);
 
             // Add field
             $result[$fieldName] = $params;
         }
 
         return $result;
+    }
+
+    /**
+     * Get elastica fields
+     *
+     * @return array
+     * @deprecated Use getElasticaFields()
+     */
+    public function getSearchableFields()
+    {
+        Deprecation::notice('3.0.0', 'Just call getElasticaFields directly');
+        return $this->getElasticaFields();
     }
 
     /**
@@ -222,8 +269,8 @@ class Searchable extends DataExtension
      */
     protected function getReferenceSearchableFields()
     {
-        Deprecation::notice('2.0.0', 'Use getSearchableFields instead');
-        return $this->getSearchableFields();
+        Deprecation::notice('2.0.0', 'Use getElasticaFields instead');
+        return $this->getElasticaFields();
     }
 
     /**
@@ -297,21 +344,6 @@ class Searchable extends DataExtension
     }
 
     /**
-     * @param Document $document
-     */
-    protected function setPublishedStatus($document)
-    {
-        $isLive = true;
-        if ($this->owner->hasExtension(Versioned::class)) {
-            if ($this->owner instanceof SiteTree) {
-                $isLive = $this->owner->isPublished();
-            }
-        }
-
-        $document->set(self::$published_field, (bool)$isLive);
-    }
-
-    /**
      * Assigns value to the fields indexed from getElasticaFields()
      *
      * @return Document
@@ -319,9 +351,6 @@ class Searchable extends DataExtension
     public function getElasticaDocument()
     {
         $document = new Document($this->owner->ID);
-
-        // Set published state
-        $this->setPublishedStatus($document);
 
         // Add all nested field values
         foreach ($this->getSearchableFieldValues() as $field => $value) {
@@ -345,7 +374,9 @@ class Searchable extends DataExtension
             $relationClass = isset($params['relationClass'])
                 ? $params['relationClass']
                 : $this->owner->getRelationClass($fieldName);
-            unset($params['relationClass']); // Don't send to elasticsearch
+            $field = isset($params['field'])
+                ? $params['field']
+                : $fieldName;
 
             // Build nested field from relation
             if ($relationClass) {
@@ -355,10 +386,11 @@ class Searchable extends DataExtension
                 continue;
             }
 
-            // Check field exists on parent
-            if ($this->owner->hasField($fieldName)) {
-                $params = $this->getExtraFieldParams($fieldName, $params);
-                $fieldValue = $this->formatValue($params, $this->owner->$fieldName);
+            // Get value from object
+            if ($this->owner->hasField($field)) {
+                // Check field exists on parent
+                $params = $this->getExtraFieldParams($field, $params);
+                $fieldValue = $this->formatValue($params, $this->owner->relField($field));
                 $fieldValues[$fieldName] = $fieldValue;
             }
         }
@@ -398,7 +430,7 @@ class Searchable extends DataExtension
             return;
         }
 
-        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->ShowInSearch) {
+        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->getField('ShowInSearch')) {
             $this->service->index($versionToIndex);
         } else {
             $this->service->remove($versionToIndex);
@@ -427,7 +459,11 @@ class Searchable extends DataExtension
     public function onBeforeDelete()
     {
         $this->service->remove($this->owner);
-        $this->updateDependentClasses();
+        if ($this->getUseQueuedJobs()) {
+            $this->queueReindex();
+        } else {
+            $this->updateDependentClasses();
+        }
     }
 
     /**
@@ -469,7 +505,7 @@ class Searchable extends DataExtension
 
                 foreach ($list as $object) {
                     if ($object instanceof DataObject && $object->hasExtension(Searchable::class)) {
-                        if (!$object->hasField('ShowInSearch') || $object->ShowInSearch) {
+                        if (!$object->hasField('ShowInSearch') || $object->getField('ShowInSearch')) {
                             $this->service->index($object);
                         } else {
                             $this->service->remove($object);
@@ -511,7 +547,7 @@ class Searchable extends DataExtension
         // Detect attachment; Skip relational check
         if (isset($params['type']) && $params['type'] === 'attachment') {
             return [$fieldName => $params];
-        };
+        }
 
         // Skip if this relation class has no elasticsearch content
         /** @var DataObject|Searchable $related */
@@ -521,7 +557,7 @@ class Searchable extends DataExtension
         }
 
         // Get nested fields
-        $nestedFields = $related->getSearchableFields();
+        $nestedFields = $related->getElasticaFields();
 
         // Determine if merging into parent as either a multilevel object (default)
         // or nested objects (requires 'nested' param to be set)
@@ -560,7 +596,7 @@ class Searchable extends DataExtension
         // Detect attachment
         if (isset($params['type']) && $params['type'] === 'attachment') {
             /** @var File $file */
-            $file = $this->owner->$fieldName();
+            $file = $this->owner->relField($fieldName);
             if (!$file instanceof File || !$file->exists()) {
                 return [];
             }
@@ -575,7 +611,7 @@ class Searchable extends DataExtension
         }
 
         // Get item from parent
-        $relatedList = $this->owner->$fieldName();
+        $relatedList = $this->owner->relField($fieldName);
         if (!$relatedList) {
             return [];
         }
@@ -622,7 +658,7 @@ class Searchable extends DataExtension
 
         // Bootstrap set with empty arrays for each top level key
         // This also ensures we set empty data if $relatedList is empty
-        foreach ($relatedSingleton->getSearchableFields() as $relatedFieldName => $spec) {
+        foreach ($relatedSingleton->getElasticaFields() as $relatedFieldName => $spec) {
             $nestedName = "{$fieldName}_{$relatedFieldName}";
             $fieldValues[$nestedName] = [];
         }
@@ -639,15 +675,16 @@ class Searchable extends DataExtension
 
     /**
      * @param $fieldValue
-     * @return string
+     * @return bool
      */
     protected function formatBoolean($fieldValue)
     {
-        return boolval($fieldValue) ? 'true' : 'false';
+        return boolval($fieldValue);
     }
 
     /**
      * Format a scalar value for the index document
+     * Note: Respects array values
      *
      * @param array $params Spec params
      * @param mixed $fieldValue
@@ -655,6 +692,13 @@ class Searchable extends DataExtension
      */
     protected function formatValue($params, $fieldValue)
     {
+        // Map array of values safely
+        if (is_array($fieldValue)) {
+            return array_map(function ($value) use ($params) {
+                return $this->formatValue($params, $value);
+            }, $fieldValue);
+        }
+
         $type = isset($params['type']) ? $params['type'] : null;
         switch ($type) {
             case 'boolean':
@@ -685,20 +729,25 @@ class Searchable extends DataExtension
         }
 
         // Guess type from $db spec
-        $fields = DataObjectSchema::singleton()->fieldSpecs($this->owner);
-        if (array_key_exists($fieldName, $fields)) {
+        $fieldType = DataObjectSchema::singleton()->fieldSpec($this->owner, $fieldName);
+
+        if ($fieldType) {
             // Strip and check data type mapping
-            $dataType = $this->stripDataTypeParameters($fields[$fieldName]);
-            if (array_key_exists($dataType, self::$mappings)) {
-                $params['type'] = self::$mappings[$dataType];
+            $dataType = $this->stripDataTypeParameters($fieldType);
+            $mappings = $this->owner->config()->get('elasticsearch_field_mappings');
+
+            if (array_key_exists($dataType, $mappings)) {
+                $params['type'] = $mappings[$dataType];
             }
         }
+
         return $params;
     }
 
     /**
      * Trigger a queuedjob to update this item.
      * Require queuedjobs to be setup.
+     * @throws ValidationException
      */
     protected function queueReindex()
     {

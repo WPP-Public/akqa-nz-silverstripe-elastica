@@ -11,7 +11,6 @@ use SilverStripe\Dev\BuildTask;
  */
 class ReindexTask extends BuildTask
 {
-
     protected $title = 'Elastic Search Reindex';
 
     protected $description = 'Refreshes the elastic search index';
@@ -27,6 +26,7 @@ class ReindexTask extends BuildTask
      */
     public function __construct(ElasticaService $service)
     {
+        parent::__construct();
         $this->service = $service;
     }
 

@@ -16,16 +16,16 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
  */
 class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
-
     /**
      *
      * get the instance to reindex and the service
      * ReindexAfterWriteJob constructor.
-     * @param int $id
+     * @param int    $id
      * @param string $class
      */
     public function __construct($id = null, $class = null)
     {
+        parent::__construct();
         if ($id) {
             $this->id = $id;
         }
@@ -119,7 +119,7 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
     /**
      * Return an array of dependant class names. These are classes that need to be reindexed when an instance of the
      * extended class is updated or when a relationship to it changes.
-     * @return array|\scalar
+     * @return array|mixed
      */
     public function dependentClasses($versionToIndex)
     {

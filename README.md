@@ -18,7 +18,7 @@ This module supercedes [Symbiote's Elastica Module](https://github.com/symbiote-
 
 ## Compatibility
 
-This release is compatible with all elasticsearch 5.x releases.
+This release should be compatible with all ElasticSearch 7.0 and above versions. May work with elasticsearch 6.
 This release requires SilverStripe 4.x
 
 If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x), please try the 1.0 release of this module
@@ -36,19 +36,19 @@ mysite/_config/search.yml
 ```yaml
 Heyday\Elastica\ElasticaService: # Example of customising the index config on the elastic search server (completely optional).
   index_config:
-    analysis:
-      analyzer:
-        default :
-          type : custom
-          tokenizer : standard
-          filter :
-            - standard
-            - lowercase
-            - stemming_filter
-      filter:
-        stemming_filter:
-          type: snowball
-          language: English
+    settings:
+      analysis:
+        analyzer:
+          default:
+            type: custom
+            tokenizer: standard
+            filter:
+              - lowercase
+              - stemming_filter
+        filter:
+          stemming_filter:
+            type: snowball
+            language: English
 
 ---
 Only:
@@ -101,6 +101,7 @@ Your\Namespace\SpecialPageWithRelatedDataObject:
     -
       RelatedDataObjects:
         type: nested
+        relationClass: App\DataObjects\Tags # Will be pulled from has_many / many_many, but you can specify it here too
 
 Your\Namespace\RelatedDataObject:
   extensions:
@@ -126,14 +127,18 @@ Your\Namespace\Page:
     - Title
     - SomeOtherField
     -
+      TitleAlias:
+        type: text
+        field: Title # You can specify a custom internal field value with 'field'
+    -
       SomeCustomFieldSimple:
-        type: string
+        type: text
     -
       SomeCustomFieldComplicatedConfig:
-        type: string
-        index_anayser: nGram_analyser
-        search_analyser: whitespace_analyser
-        stored: true
+        type: text
+        analyzer: nGram_analyser # Must reference analyzer defined on index_config
+        search_analyzer: whitespace_analyser # Must reference analyzer defined on index_config
+        store: true
 
 ```
 
@@ -153,6 +158,13 @@ class Page extends SiteTree
         return 'the config does not have anyting to do with me';
     }
 }
+```
+
+You can exclude a class from the index by using the `supporting_type` property:
+
+```yaml
+Your\Namespace\Page:
+  supporting_type: true
 ```
 
 ### Simple search controller configuration/implementation example:
@@ -220,6 +232,36 @@ class SearchController extends Page_Controller
             ]);
 
             $results = $this->searchService->search($query);
+
+            return new \SilverStripe\ORM\PaginatedList($results, $request);
+        }
+
+        return false;
+    }
+
+    /**
+     * Query all Page fields and RelatedObjects nested fields.
+     *
+     * @return bool|\SilverStripe\ORM\PaginatedList
+     */
+    public function ResultsWithRelatedObjects()
+    {
+        $request = $this->getRequest();
+
+        if ($string = $request->requestVar('for')) {
+
+            $queryString = new \Elastica\Query\QueryString(strval($string));
+
+            $boolQuery = new \Elastica\Query\BoolQuery();
+
+            $nestedQuery = new \Elastica\Query\Nested();
+            $nestedQuery->setPath('RelatedDataObjects');
+            $nestedQuery->setQuery($queryString);
+
+            $boolQuery->addShould($queryString);
+            $boolQuery->addShould($nestedQuery);
+
+            $results = $this->searchService->search($boolQuery);
 
             return new \SilverStripe\ORM\PaginatedList($results, $request);
         }
