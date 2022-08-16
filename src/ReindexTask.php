@@ -11,6 +11,8 @@ use SilverStripe\Dev\BuildTask;
  */
 class ReindexTask extends BuildTask
 {
+    private static $segment = 'ElasticaReindexTask';
+
     protected $title = 'Elastic Search Reindex';
 
     protected $description = 'Refreshes the elastic search index';

@@ -16,7 +16,6 @@ use Psr\Log\LoggerInterface;
 use ReflectionException;
 use SilverStripe\Control\Director;
 use SilverStripe\Core\ClassInfo;
-use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use SilverStripe\Core\Environment;
 use SilverStripe\ORM\DataObject;
@@ -174,7 +173,7 @@ class ElasticaService
     public function index($record)
     {
         // Ignore if disabled or only a supporting type
-        if ($this->config()->get(self::CONFIGURE_DISABLE_INDEXING) || $record->config()->get('supporting_type')) {
+        if ($this->config()->get(self::CONFIGURE_DISABLE_INDEXING)) {
             return null;
         }
 
@@ -322,7 +321,7 @@ class ElasticaService
     public function remove($record)
     {
         // Ignore if disabled or only a supporting type
-        if ($this->config()->get(self::CONFIGURE_DISABLE_INDEXING) || $record->config()->get('supporting_type')) {
+        if ($this->config()->get(self::CONFIGURE_DISABLE_INDEXING)) {
             return null;
         }
 
@@ -366,13 +365,11 @@ class ElasticaService
         }
 
         foreach ($this->getIndexedClasses() as $class) {
-            /** @var $sng Searchable */
+            /** @var Searchable */
             $sng = singleton($class);
+            $props = $sng->getElasticaMapping();
 
-            $mapping = $sng->getElasticaMapping();
-            if ($mapping) {
-                $mapping->send($index);
-            }
+            $props->send($index);
         }
     }
 
@@ -386,10 +383,6 @@ class ElasticaService
             Versioned::set_stage(Versioned::LIVE);
 
             foreach ($this->getIndexedClasses() as $class) {
-                //Only index types (or classes) that are not just supporting other index types
-                if (Config::inst()->get($class, 'supporting_type')) {
-                    continue;
-                }
 
                 foreach (DataObject::get($class) as $record) {
                     // Only index records with Show In Search enabled, or those that don't expose that fielid

@@ -30,11 +30,14 @@ class ResultList extends ViewableData implements SS_List, Limitable
      * @var Index
      */
     private $index;
+
     /**
      * @var Query
      */
     private $query;
+
     private $logger;
+
     private $resultsArray;
 
     /**
@@ -55,14 +58,14 @@ class ResultList extends ViewableData implements SS_List, Limitable
 
         if (Versioned::get_reading_mode() == Versioned::LIVE) {
             $publishedFilter = $query->hasParam('post_filter') ? $query->getParam('post_filter') : null;
-            
+
             if (!$publishedFilter) {
                 $publishedFilter = new Query\BoolQuery();
             } else if (!($publishedFilter instanceof Query\BoolQuery)) {
                 throw new \RuntimeException("Please use a bool query for your post_filter");
             }
-             
-            $publishedFilter->addMust(new Query\Term([Searchable::$published_field => 'true']));
+
+            $publishedFilter->addMust(new Query\Term([Searchable::PUBLISHED_FIELD => 'true']));
             $query->setPostFilter($publishedFilter);
         }
 
@@ -81,16 +84,18 @@ class ResultList extends ViewableData implements SS_List, Limitable
         $this->resultSet = null;
     }
 
+
     /**
      * Get array of IDs of the results
-     * @return array
+     *
+     * @return string[]
      */
     public function getIDs()
     {
         /** @var $found Result[] */
         $found = $this->getResults();
 
-        $ids = array();
+        $ids = [];
 
         foreach ($found as $item) {
             $ids[] = $item->getId();

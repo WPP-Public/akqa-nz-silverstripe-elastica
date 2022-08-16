@@ -328,16 +328,13 @@ class Searchable extends DataExtension
      */
     public function getElasticaMapping()
     {
-        //Only get the mapping for non supporting types.
-        if (!$this->owner->config()->get('supporting_type')) {
-            $fields = $this->getElasticaFields();
+        $fields = $this->getElasticaFields();
 
-            if (count($fields)) {
-                $mapping = new Mapping();
-                $mapping->setProperties($fields);
+        if (count($fields)) {
+            $mapping = new Mapping();
+            $mapping->setParam('_doc', ['properties' => $fields]);
 
-                return $mapping;
-            }
+            return $mapping;
         }
 
         return false;

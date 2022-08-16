@@ -160,19 +160,14 @@ class Page extends SiteTree
 }
 ```
 
-You can exclude a class from the index by using the `supporting_type` property:
-
-```yaml
-Your\Namespace\Page:
-  supporting_type: true
-```
 
 ### Simple search controller configuration/implementation example:
+
 mysite/_config/search.yml
 ```yaml
   SearchController:
     properties:
-      SearchService: %$Heyday\Elastica\ElasticaService
+      SearchService: "%$Heyday\Elastica\ElasticaService"
 ```
 
 mysite/code/Controllers/SearchController.php
@@ -226,11 +221,6 @@ class SearchController extends Page_Controller
                 new \Elastica\Query\QueryString(strval($string))
             );
 
-            $query->addMustNot([
-                new \Elastica\Query\Type('DataObjectThatShouldNotShowUpWithResults'),
-                new \Elastica\Query\Type('APageTypeThatShouldNotShowUpWithResults')
-            ]);
-
             $results = $this->searchService->search($query);
 
             return new \Heyday\Elastica\PaginatedList($results, $request);
@@ -279,12 +269,23 @@ class SearchController extends Page_Controller
 }
 ```
 
+## Reindexing
+
+To run a full reindex of Elastica use
+
+```
+./vendor/bin/sake dev/tasks/ElasticaReindexTask
+```
+
 ## Using Queues
+
 You can make use of queues to have your reindex processes run in the background.
 
-We use silverstripe-queuedjobs (https://github.com/symbiote/silverstripe-queuedjobs) and a job to reindex on publish has been created.
+We use silverstripe-queuedjobs (https://github.com/symbiote/silverstripe-queuedjobs) and a job to reindex on publish
+has been created.
 
 To turn on queues, you will need the following config:
+
 ```yaml
 SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\Searchable:
@@ -295,10 +296,13 @@ SilverStripe\Core\Injector\Injector:
 You will also need to set up a cronjob (I know not very queue-like...):
 
 Every minute to run the jobs in the queue
+
 ```
 */1 * * * * php /path/to/silverstripe/framework/cli-script.php dev/tasks/ProcessJobQueueTask
 ```
+
 and to clean up the jobs, add the cleanup job once by running (it then gets automatically added to run once a day):
+
 ```
 framework/sake dev/tasks/CreateQueuedJobTask?name=Symbiote\QueuedJobs\Jobs\CleanupJob
 ```
