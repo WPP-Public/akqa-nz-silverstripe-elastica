@@ -302,7 +302,3 @@ and to clean up the jobs, add the cleanup job once by running (it then gets auto
 ```
 framework/sake dev/tasks/CreateQueuedJobTask?name=Symbiote\QueuedJobs\Jobs\CleanupJob
 ```
-
-## License
-
-Heyday's SilverStripe Elastica is released under the [MIT license](http://heyday.mit-license.org/)
