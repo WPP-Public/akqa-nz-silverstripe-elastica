@@ -2,8 +2,9 @@
 
 namespace Heyday\Elastica;
 
-
 use Elastica\Client;
+use Elastica\Response;
+use Exception;
 use Psr\Log\LoggerInterface;
 
 class ElasticaPercolateService extends ElasticaService
@@ -25,8 +26,8 @@ class ElasticaPercolateService extends ElasticaService
         LoggerInterface $logger = null,
         $indexingMemory = null,
         $searchableExtensionClassName = Searchable::class,
-        $doctypeToPercolate = null)
-    {
+        $doctypeToPercolate = null
+    ) {
         parent::__construct($client, $indexName, $logger, $indexingMemory, $searchableExtensionClassName);
 
         $this->doctypeToPercolate = $doctypeToPercolate;
@@ -34,23 +35,27 @@ class ElasticaPercolateService extends ElasticaService
 
     /**
      * @param Searchable $record
-     * @return \Elastica\Response
+     * @return Response|null
+     * @throws Exception
      */
     public function index($record)
     {
-        if (!$record instanceof $this->doctypeToPercolate) {
+        if ($record instanceof $this->doctypeToPercolate) {
             return parent::index($record);
         }
+        return null;
     }
 
     /**
      * @param Searchable $record
-     * @return \Elastica\Response
+     * @return Response|null
+     * @throws Exception
      */
     public function remove($record)
     {
-        if (!$record instanceof $this->doctypeToPercolate) {
+        if ($record instanceof $this->doctypeToPercolate) {
             return parent::remove($record);
         }
+        return null;
     }
 }

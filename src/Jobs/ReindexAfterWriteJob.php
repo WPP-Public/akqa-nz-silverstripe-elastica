@@ -10,23 +10,22 @@ use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJob;
 
-
 /**
  * Class ReindexAfterWriteJob
  * @package Heyday\Elastica\Jobs
  */
 class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
-
     /**
      *
      * get the instance to reindex and the service
      * ReindexAfterWriteJob constructor.
-     * @param null $id
-     * @param null $class
+     * @param int    $id
+     * @param string $class
      */
     public function __construct($id = null, $class = null)
     {
+        parent::__construct();
         if ($id) {
             $this->id = $id;
         }
@@ -69,17 +68,12 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
     public function process()
     {
         if ($this->id && $this->class) {
-
             $service = Injector::inst()->get('Heyday\Elastica\ElasticaService');
             $reading_mode = Versioned::get_reading_mode();
             Versioned::set_reading_mode('Stage.Live');
 
             $versionToIndex = DataObject::get($this->class)->byID($this->id);
-
-            if (($versionToIndex instanceof SiteTree && $versionToIndex->ShowInSearch) ||
-                (!$versionToIndex instanceof SiteTree && ($versionToIndex->hasMethod('getShowInSearch') && $versionToIndex->ShowInSearch)) ||
-                (!$versionToIndex instanceof SiteTree && !$versionToIndex->hasMethod('getShowInSearch'))
-            ) {
+            if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->ShowInSearch) {
                 $service->index($versionToIndex);
             } else {
                 $service->remove($versionToIndex);
@@ -106,7 +100,6 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
                 $list = DataList::create($class);
 
                 foreach ($list as $object) {
-
                     if ($object instanceof DataObject &&
                         $object->hasExtension('Heyday\\Elastica\\Searchable')
                     ) {
@@ -126,7 +119,7 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
     /**
      * Return an array of dependant class names. These are classes that need to be reindexed when an instance of the
      * extended class is updated or when a relationship to it changes.
-     * @return array|\scalar
+     * @return array|mixed
      */
     public function dependentClasses($versionToIndex)
     {

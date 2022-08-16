@@ -2,7 +2,6 @@
 
 namespace Heyday\Elastica;
 
-
 /**
  * Class PaginatedList
  * @package Heyday\Elastica

@@ -1,10 +1,10 @@
 # Heyday's SilverStripe Elastica Module
 
-Facilitates searching and indexing of SilverStripe CMS using ElasticSearch. We use Elastica to do all the heavy lifting in terms of communication with the elastic search server. 
+Facilitates searching and indexing of SilverStripe CMS using ElasticSearch. We use Elastica to do all the heavy lifting in terms of communication with the elastic search server.
 
 This module makes it easy to use ElasticSearch with SilverStripe without limiting any of the functionality found in Elastica. Basically anything that can be done with Elastica alone can be done in conjunction with this module.
 
-This module is a fork of [SilverStripe's Elastica Module](https://github.com/silverstripe-australia/silverstripe-elastica). 
+This module supercedes [Symbiote's Elastica Module](https://github.com/symbiote-library/silverstripe-elastica), which was only supported up to SilverStripe 3.
 
 ## Features
 
@@ -18,7 +18,7 @@ This module is a fork of [SilverStripe's Elastica Module](https://github.com/sil
 
 ## Compatibility
 
-This release is compatible with all elasticsearch 5.x releases.
+This release should be compatible with all ElasticSearch 7.0 and above versions. May work with elasticsearch 6.
 This release requires SilverStripe 4.x
 
 If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x), please try the 1.0 release of this module
@@ -35,20 +35,20 @@ $ composer require heyday/silverstripe-elastica:~2.0
 mysite/_config/search.yml
 ```yaml
 Heyday\Elastica\ElasticaService: # Example of customising the index config on the elastic search server (completely optional).
-  index_config:  
-    analysis:
-      analyzer:
-        default :
-          type : custom
-          tokenizer : standard
-          filter :
-            - standard
-            - lowercase
-            - stemming_filter
-      filter:
-        stemming_filter:
-          type: snowball
-          language: English
+  index_config:
+    settings:
+      analysis:
+        analyzer:
+          default:
+            type: custom
+            tokenizer: standard
+            filter:
+              - lowercase
+              - stemming_filter
+        filter:
+          stemming_filter:
+            type: snowball
+            language: English
 
 ---
 Only:
@@ -65,7 +65,7 @@ SilverStripe\Core\Injector\Injector:
       - %$Elastica\Client
       - name-of-index  # name of the index on the elastic search server
       - %$Logger  # your error logger (must implement psr/log interface)
-      - 64MB      # increases memory limit while indexing 
+      - 64MB      # increases memory limit while indexing
 
 ```
 
@@ -83,7 +83,7 @@ Your\Namespace\Page:
     - MenuTitle
     - Content
     - MetaDescription
-    
+
 Your\Namespace\SpecialPageWithAdditionalFields:
   extensions:
     - Heyday\Elastica\Searchable # only needed if this page does not extend the 'Page' configured above
@@ -92,14 +92,17 @@ Your\Namespace\SpecialPageWithAdditionalFields:
     - BannerHeading
     - BannerCopy
     - SubHeading
-    
+
 Your\Namespace\SpecialPageWithRelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
   indexed_fields:
     <<: *page_defaults
-    - RelatedDataObjects
-    
+    -
+      RelatedDataObjects:
+        type: nested
+        relationClass: App\DataObjects\Tags # Will be pulled from has_many / many_many, but you can specify it here too
+
 Your\Namespace\RelatedDataObject:
   extensions:
     - Heyday\Elastica\Searchable
@@ -120,18 +123,22 @@ mysite/_config/search.yml
 Your\Namespace\Page:
   extensions:
     - Heyday\Elastica\Searchable
-  indexed_fields: 
+  indexed_fields:
     - Title
     - SomeOtherField
     -
+      TitleAlias:
+        type: text
+        field: Title # You can specify a custom internal field value with 'field'
+    -
       SomeCustomFieldSimple:
-        type: string
+        type: text
     -
       SomeCustomFieldComplicatedConfig:
-        type: string
-        index_anayser: nGram_analyser
-        search_analyser: whitespace_analyser
-        stored: true
+        type: text
+        analyzer: nGram_analyser # Must reference analyzer defined on index_config
+        search_analyzer: whitespace_analyser # Must reference analyzer defined on index_config
+        store: true
 
 ```
 
@@ -145,12 +152,19 @@ class Page extends SiteTree
     {
         return 'some dynamic text or something';
     }
-    
+
     public function getSomeCustomFieldComplicatedConfig()
     {
         return 'the config does not have anyting to do with me';
     }
 }
+```
+
+You can exclude a class from the index by using the `supporting_type` property:
+
+```yaml
+Your\Namespace\Page:
+  supporting_type: true
 ```
 
 ### Simple search controller configuration/implementation example:
@@ -198,7 +212,7 @@ class SearchController extends Page_Controller
     }
 
     /**
-     * @return bool|\SilverStripe\ORM\PaginatedList
+     * @return bool|\Heyday\Elastica\PaginatedList
      */
     public function Results()
     {
@@ -218,6 +232,36 @@ class SearchController extends Page_Controller
             ]);
 
             $results = $this->searchService->search($query);
+
+            return new \Heyday\Elastica\PaginatedList($results, $request);
+        }
+
+        return false;
+    }
+
+    /**
+     * Query all Page fields and RelatedObjects nested fields.
+     *
+     * @return bool|\SilverStripe\ORM\PaginatedList
+     */
+    public function ResultsWithRelatedObjects()
+    {
+        $request = $this->getRequest();
+
+        if ($string = $request->requestVar('for')) {
+
+            $queryString = new \Elastica\Query\QueryString(strval($string));
+
+            $boolQuery = new \Elastica\Query\BoolQuery();
+
+            $nestedQuery = new \Elastica\Query\Nested();
+            $nestedQuery->setPath('RelatedDataObjects');
+            $nestedQuery->setQuery($queryString);
+
+            $boolQuery->addShould($queryString);
+            $boolQuery->addShould($nestedQuery);
+
+            $results = $this->searchService->search($boolQuery);
 
             return new \SilverStripe\ORM\PaginatedList($results, $request);
         }
@@ -245,7 +289,7 @@ To turn on queues, you will need the following config:
 SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\Searchable:
     properties:
-      Queued: true
+      queued: true
 ```
 
 You will also need to set up a cronjob (I know not very queue-like...):
