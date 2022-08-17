@@ -275,6 +275,32 @@ class ResultList extends ViewableData implements SS_List, Limitable
         return $result;
     }
 
+
+    public function getFirstItem()
+    {
+        try {
+            $from = $this->getQuery()->getParam('from');
+        } catch (Exception $e) {
+            $from = 1;
+        }
+
+        return $from;
+    }
+
+
+    public function getLastItem()
+    {
+        try {
+            $start = $this->getFirstItem();
+            $to = min($start + $this->getQuery()->getParam('size'), $this->getTotalItems());
+        } catch (Exception $e) {
+            $to = min(10, $this->getTotalItems());
+        }
+
+        return $to;
+    }
+
+
     /**
      * @return mixed
      */
@@ -333,6 +359,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
         return $this;
     }
 
+
     /**
      * @return int
      */
@@ -344,7 +371,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     /**
      * @return int
      */
-    public function totalItems()
+    public function getTotalItems()
     {
         return $this->getResults()->getTotalHits();
     }

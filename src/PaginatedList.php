@@ -16,9 +16,30 @@ class PaginatedList extends \SilverStripe\ORM\PaginatedList
     public function getTotalItems()
     {
         if ($this->list instanceof ResultList) {
-            return $this->list->totalItems();
+            return $this->list->getTotalItems();
         }
 
         return parent::getTotalItems();
     }
+
+
+    public function FirstItem()
+    {
+        if ($this->list instanceof ResultList) {
+            return $this->list->getFirstItem();
+        }
+
+        return parent::getTotalItems();
+    }
+
+
+    public function LastItem()
+    {
+        if ($this->list instanceof ResultList) {
+            return $this->list->getLastItem();
+        }
+
+        return parent::getTotalItems();
+    }
+
 }
