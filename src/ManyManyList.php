@@ -10,13 +10,14 @@ use SilverStripe\ORM\ManyManyList as SilverStripeManyManyList;
 /**
  * A drop in replacement for the default ManyManyList.
  * This class allows us to invalidate records when many many relations change.
+ *
  * @package Heyday\Elastica\SilverStripe
  */
 class ManyManyList extends SilverStripeManyManyList
 {
     /**
-     * @param mixed $item
-     * @param array $extraFields
+     * @param  mixed $item
+     * @param  array $extraFields
      * @throws Exception
      */
     public function add($item, $extraFields = [])
@@ -53,7 +54,9 @@ class ManyManyList extends SilverStripeManyManyList
         parent::removeAll();
 
         $items = DataList::create($this->dataClass);
-        /** @var DataObject $item */
+        /**
+ * @var DataObject $item
+*/
         foreach ($items as $item) {
             $item->extend('onAfterManyManyRelationRemove');
         }

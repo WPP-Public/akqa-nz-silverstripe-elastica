@@ -13,12 +13,13 @@ class ElasticaPercolateService extends ElasticaService
 
     /**
      * ElasticaPercolateService constructor.
-     * @param Client $client
+     *
+     * @param Client               $client
      * @param $indexName
      * @param LoggerInterface|null $logger
-     * @param null $indexingMemory
-     * @param string $searchableExtensionClassName
-     * @param null $doctypeToPercolate
+     * @param null                 $indexingMemory
+     * @param string               $searchableExtensionClassName
+     * @param null                 $doctypeToPercolate
      */
     public function __construct(
         Client $client,
@@ -34,7 +35,7 @@ class ElasticaPercolateService extends ElasticaService
     }
 
     /**
-     * @param Searchable $record
+     * @param  Searchable $record
      * @return Response|null
      * @throws Exception
      */
@@ -47,7 +48,7 @@ class ElasticaPercolateService extends ElasticaService
     }
 
     /**
-     * @param Searchable $record
+     * @param  Searchable $record
      * @return Response|null
      * @throws Exception
      */

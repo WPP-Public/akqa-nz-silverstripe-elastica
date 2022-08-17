@@ -27,19 +27,21 @@ class Searchable extends DataExtension
 {
     /**
      * Key used by elastic to determine the type of document.
+     *
      * @var string
      */
     public const TYPE_FIELD = 'type';
 
     /**
      * Key added to every indexed document to determine published status.
+     *
      * @var string
      */
     public const PUBLISHED_FIELD = 'SS_Published';
 
     /**
      * @config
-     * @var array
+     * @var    array
      */
     private static $elasticsearch_field_mappings = [
         'PrimaryKey'  => 'integer',
@@ -64,9 +66,10 @@ class Searchable extends DataExtension
 
     /**
      * ElasticSearch 7.0 compatibility: Use a custom 'type' field instead of deprecated _type
+     *
      * @link https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html#_custom_type_field
      *
-     * @var array
+     * @var    array
      * @config
      */
     private static $indexed_fields = [
@@ -83,7 +86,7 @@ class Searchable extends DataExtension
 
     /**
      * @config
-     * @var array
+     * @var    array
      */
     private static $exclude_relations = [];
 
@@ -164,6 +167,7 @@ class Searchable extends DataExtension
     /**
      * Return an array of dependant class names. These are classes that need to be reindexed when an instance of the
      * extended class is updated or when a relationship to it changes.
+     *
      * @return array
      */
     public function dependentClasses()
@@ -201,6 +205,7 @@ class Searchable extends DataExtension
 
     /**
      * Replacing the SS3 inheritedDatabaseFields() method
+     *
      * @return array
      */
     public function inheritedDatabaseFields()
@@ -250,7 +255,8 @@ class Searchable extends DataExtension
 
     /**
      * Clean up the data type name
-     * @param string $dataType
+     *
+     * @param  string $dataType
      * @return string
      */
     protected function stripDataTypeParameters($dataType)
@@ -259,7 +265,7 @@ class Searchable extends DataExtension
     }
 
     /**
-     * @param string $dateString
+     * @param  string $dateString
      * @return string|null
      */
     protected function formatDate($dateString)
@@ -273,7 +279,7 @@ class Searchable extends DataExtension
     /**
      * Coerce strings into integers
      *
-     * @param mixed $intString
+     * @param  mixed $intString
      * @return int|null
      */
     protected function formatInt($intString)
@@ -287,7 +293,7 @@ class Searchable extends DataExtension
     /**
      * Coerce strings into floats
      *
-     * @param mixed $floatString
+     * @param  mixed $floatString
      * @return float|null
      */
     protected function formatFloat($floatString)
@@ -373,6 +379,7 @@ class Searchable extends DataExtension
 
     /**
      * Updates the record in the search index, or removes it as necessary.
+     *
      * @throws Exception
      */
     public function onAfterWrite()
@@ -387,7 +394,7 @@ class Searchable extends DataExtension
     /**
      * reIndex related content
      *
-     * @param string $stage
+     * @param  string $stage
      * @throws Exception
      */
     public function reIndex($stage = Versioned::LIVE)
@@ -415,8 +422,8 @@ class Searchable extends DataExtension
     /**
      * Batch update all documents attached to the index for this record
      *
-     * @param callable $callback
-     * @param int      $documentsProcessed
+     * @param  callable $callback
+     * @param  int      $documentsProcessed
      * @return mixed
      * @throws Exception
      */
@@ -427,6 +434,7 @@ class Searchable extends DataExtension
 
     /**
      * Removes the record from the search index.
+     *
      * @throws Exception
      */
     public function onBeforeDelete()
@@ -441,6 +449,7 @@ class Searchable extends DataExtension
 
     /**
      * Update dependent classes after the extended object has been removed from a ManyManyList
+     *
      * @throws Exception
      */
     public function onAfterManyManyRelationRemove()
@@ -454,6 +463,7 @@ class Searchable extends DataExtension
 
     /**
      * Update dependent classes after the extended object has been added to a ManyManyList
+     *
      * @throws Exception
      */
     public function onAfterManyManyRelationAdd()
@@ -467,6 +477,7 @@ class Searchable extends DataExtension
 
     /**
      * Updates the records of all instances of dependent classes.
+     *
      * @throws Exception
      */
     protected function updateDependentClasses()
@@ -492,7 +503,7 @@ class Searchable extends DataExtension
     /**
      * Serialise a file attachment
      *
-     * @param File $file
+     * @param  File $file
      * @return array Value for 'attachment' type
      */
     protected function createAttachment(File $file)
@@ -510,9 +521,9 @@ class Searchable extends DataExtension
     /**
      * Build searchable spec for a given field
      *
-     * @param string $fieldName
-     * @param array  $params Spec params
-     * @param string $className
+     * @param  string $fieldName
+     * @param  array  $params    Spec params
+     * @param  string $className
      * @return array
      */
     protected function getSearchableFieldsForRelation($fieldName, $params, $className)
@@ -523,7 +534,9 @@ class Searchable extends DataExtension
         }
 
         // Skip if this relation class has no elasticsearch content
-        /** @var DataObject|Searchable $related */
+        /**
+         * @var DataObject|Searchable $related
+         */
         $related = DataObject::singleton($className);
         if (!$related->hasExtension(Searchable::class)) {
             return [];
@@ -559,16 +572,18 @@ class Searchable extends DataExtension
     /**
      * Get all fields from a relation on a parent object
      *
-     * @param string $fieldName
-     * @param array  $params Spec params
-     * @param string $className
+     * @param  string $fieldName
+     * @param  array  $params    Spec params
+     * @param  string $className
      * @return array
      */
     protected function getSearchableFieldValuesForRelation($fieldName, $params, $className)
     {
         // Detect attachment
         if (isset($params['type']) && $params['type'] === 'attachment') {
-            /** @var File $file */
+            /**
+             * @var File $file
+             */
             $file = $this->owner->relField($fieldName);
             if (!$file instanceof File || !$file->exists()) {
                 return [];
@@ -577,7 +592,9 @@ class Searchable extends DataExtension
         }
 
         // Skip if this relation class has no elasticsearch content
-        /** @var DataObject|Searchable $relatedSingleton */
+        /**
+         * @var DataObject|Searchable $relatedSingleton
+         */
         $relatedSingleton = DataObject::singleton($className);
         if (!$relatedSingleton->hasExtension(Searchable::class)) {
             return [];
@@ -590,7 +607,9 @@ class Searchable extends DataExtension
         }
 
         // Handle unary relations
-        /** @var DataObject|Searchable $relatedItem */
+        /**
+         * @var DataObject|Searchable $relatedItem
+         */
         $relatedItem = null;
         // Handle unary sets
         $isUnary = $relatedList instanceof DataObject;
@@ -604,7 +623,9 @@ class Searchable extends DataExtension
         // Note: Unary relations are treated as a single-length list
         if (isset($params['type']) && $params['type'] === 'nested') {
             $relationValues = [];
-            /** @var DataObject|Searchable $relationListItem */
+            /**
+             * @var DataObject|Searchable $relationListItem
+             */
             foreach ($relatedList as $relationListItem) {
                 $relationValues[] = $relationListItem->getSearchableFieldValues();
             }
@@ -647,7 +668,7 @@ class Searchable extends DataExtension
     }
 
     /**
-     * @param $fieldValue
+     * @param  $fieldValue
      * @return bool
      */
     protected function formatBoolean($fieldValue)
@@ -659,17 +680,20 @@ class Searchable extends DataExtension
      * Format a scalar value for the index document
      * Note: Respects array values
      *
-     * @param array $params Spec params
-     * @param mixed $fieldValue
+     * @param  array $params     Spec params
+     * @param  mixed $fieldValue
      * @return mixed
      */
     protected function formatValue($params, $fieldValue)
     {
         // Map array of values safely
         if (is_array($fieldValue)) {
-            return array_map(function ($value) use ($params) {
-                return $this->formatValue($params, $value);
-            }, $fieldValue);
+            return array_map(
+                function ($value) use ($params) {
+                    return $this->formatValue($params, $value);
+                },
+                $fieldValue
+            );
         }
 
         $type = isset($params['type']) ? $params['type'] : null;
@@ -690,8 +714,8 @@ class Searchable extends DataExtension
     /**
      * Get extra params for a field from the parent document
      *
-     * @param string $fieldName
-     * @param array  $params
+     * @param  string $fieldName
+     * @param  array  $params
      * @return array
      */
     protected function getExtraFieldParams($fieldName, $params)
@@ -720,6 +744,7 @@ class Searchable extends DataExtension
     /**
      * Trigger a queuedjob to update this item.
      * Require queuedjobs to be setup.
+     *
      * @throws ValidationException
      */
     protected function queueReindex()

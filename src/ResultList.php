@@ -51,18 +51,20 @@ class ResultList extends ViewableData implements SS_List, Limitable
         parent::__construct();
 
         //Optimise the query by just getting back the ids and types
-        $query->setStoredFields([
+        $query->setStoredFields(
+            [
             '_id',
             Searchable::TYPE_FIELD,
             'highlight'
-        ]);
+            ]
+        );
 
         if (Versioned::get_reading_mode() == Versioned::LIVE) {
             $publishedFilter = $query->hasParam('post_filter') ? $query->getParam('post_filter') : null;
 
             if (!$publishedFilter) {
                 $publishedFilter = new Query\BoolQuery();
-            } else if (!($publishedFilter instanceof Query\BoolQuery)) {
+            } elseif (!($publishedFilter instanceof Query\BoolQuery)) {
                 throw new \RuntimeException("Please use a bool query for your post_filter");
             }
 
@@ -93,7 +95,9 @@ class ResultList extends ViewableData implements SS_List, Limitable
      */
     public function getIDs()
     {
-        /** @var $found Result[] */
+        /**
+ * @var $found Result[]
+*/
         $found = $this->getResults();
 
         $ids = [];
@@ -148,8 +152,8 @@ class ResultList extends ViewableData implements SS_List, Limitable
     }
 
     /**
-     * @param int $limit
-     * @param int $offset
+     * @param  int $limit
+     * @param  int $offset
      * @return ResultList
      */
     public function limit($limit, $offset = 0)
@@ -163,7 +167,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     }
 
     /**
-     * @param array $sortArgs
+     * @param  array $sortArgs
      * @return ResultList
      */
     public function sort(array $sortArgs)
@@ -321,8 +325,8 @@ class ResultList extends ViewableData implements SS_List, Limitable
 
 
     /**
-     * @param string $key
-     * @param string $title
+     * @param  string $key
+     * @param  string $title
      * @return Map
      */
     public function map($key = 'ID', $title = 'Title')
@@ -331,7 +335,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     }
 
     /**
-     * @param string $col
+     * @param  string $col
      * @return array
      */
     public function column($col = 'ID')
@@ -350,7 +354,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     }
 
     /**
-     * @param callable $callback
+     * @param  callable $callback
      * @return $this
      */
     public function each($callback)

@@ -4,6 +4,7 @@ namespace Heyday\Elastica;
 
 /**
  * Class PaginatedList
+ *
  * @package Heyday\Elastica
  */
 class PaginatedList extends \SilverStripe\ORM\PaginatedList
@@ -41,5 +42,4 @@ class PaginatedList extends \SilverStripe\ORM\PaginatedList
 
         return parent::getTotalItems();
     }
-
 }

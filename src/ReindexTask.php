@@ -24,6 +24,7 @@ class ReindexTask extends BuildTask
 
     /**
      * ReindexTask constructor.
+     *
      * @param ElasticaService $service
      */
     public function __construct(ElasticaService $service)

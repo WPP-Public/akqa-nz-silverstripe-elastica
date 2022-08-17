@@ -11,7 +11,9 @@ class ElasticaServiceTest extends SapphireTest
 {
     public function testDefineDeletesIndexIfRecreateIsPassed()
     {
-        /** @var ElasticaService|PHPUnit_Framework_MockObject_MockObject $service */
+        /**
+ * @var ElasticaService|PHPUnit_Framework_MockObject_MockObject $service
+*/
         $service = $this->getMockBuilder(ElasticaService::class)
             ->disableOriginalConstructor()
             ->setMethods(['getIndex', 'createIndex', 'getIndexedClasses'])
@@ -19,7 +21,9 @@ class ElasticaServiceTest extends SapphireTest
 
         $service->expects($this->once())->method('getIndexedClasses')->willReturn([]);
 
-        /** @var Index|PHPUnit_Framework_MockObject_MockObject $index */
+        /**
+ * @var Index|PHPUnit_Framework_MockObject_MockObject $index
+*/
         $index = $this->createMock(Index::class);
         $index->expects($this->exactly(2))->method('exists')->willReturnOnConsecutiveCalls(true, false);
         $index->expects($this->once())->method('delete');

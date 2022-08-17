@@ -2,6 +2,7 @@
 
 namespace Heyday\Elastica\Jobs;
 
+use Heyday\Elastica\Searchable;
 use SilverStripe\CMS\Model\SiteTree;
 use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataList;
@@ -12,14 +13,15 @@ use Symbiote\QueuedJobs\Services\QueuedJob;
 
 /**
  * Class ReindexAfterWriteJob
+ *
  * @package Heyday\Elastica\Jobs
  */
 class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
 {
     /**
-     *
      * get the instance to reindex and the service
      * ReindexAfterWriteJob constructor.
+     *
      * @param int    $id
      * @param string $class
      */
@@ -100,11 +102,9 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
                 $list = DataList::create($class);
 
                 foreach ($list as $object) {
-                    if ($object instanceof DataObject &&
-                        $object->hasExtension('Heyday\\Elastica\\Searchable')
-                    ) {
-                        if (($object instanceof SiteTree && $object->ShowInSearch) ||
-                            (!$object instanceof SiteTree)
+                    if ($object instanceof DataObject && $object->hasExtension(Searchable::class)) {
+                        if (($object instanceof SiteTree && $object->ShowInSearch)
+                            || (!$object instanceof SiteTree)
                         ) {
                             $service->index($object);
                         } else {
@@ -119,6 +119,7 @@ class ReindexAfterWriteJob extends AbstractQueuedJob implements QueuedJob
     /**
      * Return an array of dependant class names. These are classes that need to be reindexed when an instance of the
      * extended class is updated or when a relationship to it changes.
+     *
      * @return array|mixed
      */
     public function dependentClasses($versionToIndex)

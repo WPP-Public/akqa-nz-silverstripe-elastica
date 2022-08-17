@@ -78,8 +78,8 @@ class ElasticaService
      *
      * @param Client               $client
      * @param string               $indexName
-     * @param LoggerInterface|null $logger         Increases the memory limit while indexing.
-     * @param string               $indexingMemory A memory limit string, such as "64M".
+     * @param LoggerInterface|null $logger                       Increases the memory limit while indexing.
+     * @param string               $indexingMemory               A memory limit string, such as "64M".
      * @param string               $searchableExtensionClassName
      */
     public function __construct(
@@ -122,9 +122,10 @@ class ElasticaService
 
     /**
      * Performs a search query and returns either a ResultList (SS template compatible) or an Elastica\ResultSet
-     * @param Query|string|array $query
-     * @param array              $options Options defined in \Elastica\Search
-     * @param bool               $returnResultList
+     *
+     * @param  Query|string|array $query
+     * @param  array              $options          Options defined in \Elastica\Search
+     * @param  bool               $returnResultList
      * @return ResultList | ResultSet
      */
     public function search($query, $options = null, $returnResultList = true)
@@ -142,12 +143,14 @@ class ElasticaService
      */
     public function createIndex()
     {
-        return $this->runQuery(function () {
-            $index = $this->getIndex();
-            $config = $this->getIndexConfig() ?: [];
-            $forceRecreate = !empty($config);
-            return $index->create($config, $forceRecreate);
-        });
+        return $this->runQuery(
+            function () {
+                $index = $this->getIndex();
+                $config = $this->getIndexConfig() ?: [];
+                $forceRecreate = !empty($config);
+                return $index->create($config, $forceRecreate);
+            }
+        );
     }
 
     /**
@@ -157,16 +160,18 @@ class ElasticaService
      */
     public function deleteIndex()
     {
-        return $this->runQuery(function () {
-            $index = $this->getIndex();
-            return $index->delete();
-        });
+        return $this->runQuery(
+            function () {
+                $index = $this->getIndex();
+                return $index->delete();
+            }
+        );
     }
 
     /**
      * Either creates or updates a record in the index.
      *
-     * @param Searchable|DataObject $record
+     * @param  Searchable|DataObject $record
      * @return Response|null|bool Return response, or true if batched
      * @throws Exception
      */
@@ -197,11 +202,13 @@ class ElasticaService
         }
 
         // Add document
-        return $this->runQuery(function () use ($index, $document) {
-            $response = $index->addDocument($document);
-            $index->refresh();
-            return $response;
-        });
+        return $this->runQuery(
+            function () use ($index, $document) {
+                $response = $index->addDocument($document);
+                $index->refresh();
+                return $response;
+            }
+        );
     }
 
     /**
@@ -219,8 +226,8 @@ class ElasticaService
      * For example, you might call batch with a closure that initiates ->index() on 20 records.
      * On the conclusion of this closure, those 20 updates will be batched together into a single update
      *
-     * @param callable $callback           Callback within which to batch updates
-     * @param int      $documentsProcessed Number of documents processed during this batch
+     * @param  callable $callback           Callback within which to batch updates
+     * @param  int      $documentsProcessed Number of documents processed during this batch
      * @return mixed result of $callback
      * @throws Exception
      */
@@ -242,7 +249,7 @@ class ElasticaService
     /**
      * Process a batch update
      *
-     * @param Document[][][] $batch List of updates for this batch, grouped by type
+     * @param  Document[][][] $batch List of updates for this batch, grouped by type
      * @return int Number of documents updated in this batch
      */
     protected function flushBatch($batch)
@@ -252,13 +259,13 @@ class ElasticaService
         // process batches
         $index = null;
         foreach ($batch as $type => $changes) {
-            $typeObject = null;
             foreach ($changes as $action => $documents) {
                 if (empty($documents)) {
                     continue;
                 }
                 $index = $index ?: $this->getIndex();
                 $documentsProcessed += count($documents);
+
                 switch ($action) {
                     case self::UPDATES:
                         $index->addDocuments($documents);
@@ -275,18 +282,20 @@ class ElasticaService
                 }
             }
         }
+
         // Refresh if any documents updated
         if ($documentsProcessed && $index) {
             $index->refresh();
         }
+
         return $documentsProcessed;
     }
 
     /**
      * Add document to batch query
      *
-     * @param string   $type   elasticsearch type name
-     * @param string   $action self::DELETES or self::UPDATES
+     * @param string   $type     elasticsearch type name
+     * @param string   $action   self::DELETES or self::UPDATES
      * @param Document $document
      */
     protected function batchDocument($type, $action, $document)
@@ -314,7 +323,7 @@ class ElasticaService
     }
 
     /**
-     * @param Searchable|DataObject $record
+     * @param  Searchable|DataObject $record
      * @return Response|null|bool Response, or true if batched
      * @throws Exception
      */
@@ -348,7 +357,7 @@ class ElasticaService
     /**
      * Creates the index and the type mappings.
      *
-     * @param bool $recreate
+     * @param  bool $recreate
      * @throws Exception
      */
     public function define($recreate = false)
@@ -365,7 +374,9 @@ class ElasticaService
         }
 
         foreach ($this->getIndexedClasses() as $class) {
-            /** @var Searchable */
+            /**
+             * @var Searchable
+             */
             $sng = singleton($class);
             $props = $sng->getElasticaMapping();
 
@@ -375,29 +386,31 @@ class ElasticaService
 
     /**
      * Re-indexes each record in the index.
+     *
      * @throws Exception
      */
     public function refresh()
     {
-        Versioned::withVersionedMode(function () {
-            Versioned::set_stage(Versioned::LIVE);
+        Versioned::withVersionedMode(
+            function () {
+                Versioned::set_stage(Versioned::LIVE);
 
-            foreach ($this->getIndexedClasses() as $class) {
-
-                foreach (DataObject::get($class) as $record) {
-                    // Only index records with Show In Search enabled, or those that don't expose that fielid
-                    if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
-                        if ($this->index($record)) {
-                            $this->printActionMessage($record, 'INDEXED');
-                        }
-                    } else {
-                        if ($this->remove($record)) {
-                            $this->printActionMessage($record, 'REMOVED');
+                foreach ($this->getIndexedClasses() as $class) {
+                    foreach (DataObject::get($class) as $record) {
+                        // Only index records with Show In Search enabled, or those that don't expose that fielid
+                        if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
+                            if ($this->index($record)) {
+                                $this->printActionMessage($record, 'INDEXED');
+                            }
+                        } else {
+                            if ($this->remove($record)) {
+                                $this->printActionMessage($record, 'REMOVED');
+                            }
                         }
                     }
                 }
             }
-        });
+        );
     }
 
     /**
@@ -438,7 +451,7 @@ class ElasticaService
      * If a logger is configured, log the exception there.
      * Otherwise the exception is thrown
      *
-     * @param Exception $exception
+     * @param  Exception $exception
      * @throws Exception
      */
     protected function exception($exception)
@@ -461,7 +474,7 @@ class ElasticaService
     /**
      * Check if response has any errors
      *
-     * @param Response|null $response
+     * @param  Response|null $response
      * @throws Exception
      */
     protected function logResponse(Response $response = null)
@@ -475,7 +488,7 @@ class ElasticaService
         $data = $response->getData();
         $errorMessage = $data['message']
             ?? $response->getErrorMessage()
-                ?: sprintf("HTTP %d error", $response->getStatus());
+            ?: sprintf("HTTP %d error", $response->getStatus());
         $message = "Elastica server error: $errorMessage";
 
         // If no logger specified expose error normally
@@ -490,7 +503,7 @@ class ElasticaService
     /**
      * Run elastic search query
      *
-     * @param callable $callback A callback that generates an Elastica Response object
+     * @param  callable $callback A callback that generates an Elastica Response object
      * @return Response The response
      * @throws Exception
      */
