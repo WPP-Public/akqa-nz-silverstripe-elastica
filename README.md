@@ -62,10 +62,10 @@ SilverStripe\Core\Injector\Injector:
 
   Heyday\Elastica\ElasticaService:
     constructor:
-      - %$Elastica\Client
-      - name-of-index  # name of the index on the elastic search server
-      - %$Logger  # your error logger (must implement psr/log interface)
-      - 64MB      # increases memory limit while indexing
+      - "%$Elastica\Client"
+      - "name-of-index"  # name of the index on the elastic search server
+      - "%$Logger"  # your error logger (must implement psr/log interface)
+      - "64MB"      # increases memory limit while indexing
 
 ```
 
