@@ -26,7 +26,7 @@ If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x),
 ## Installation
 
 ```bash
-$ composer require heyday/silverstripe-elastica:~2.0
+$ composer require heyday/silverstripe-elastica
 ```
 
 ## Usage
