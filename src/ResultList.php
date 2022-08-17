@@ -13,6 +13,7 @@ use LogicException;
 use Psr\Log\LoggerInterface;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
+use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\Limitable;
 use SilverStripe\ORM\Map;
 use SilverStripe\ORM\SS_List;
@@ -239,11 +240,11 @@ class ResultList extends ViewableData implements SS_List, Limitable
                             $concatenatedValue .= $value;
                         }
 
-                        $highlightsArray[$field] = $concatenatedValue;
+                        $highlightsArray[$field] = DBField::create_field('HTMLText', $concatenatedValue);
                     }
 
-                    //add Highlights property
                     $retrieved[$type][$id]->highlights = new ArrayData($highlightsArray);
+
                     $this->resultsArray[] = $retrieved[$type][$id];
                 }
             }

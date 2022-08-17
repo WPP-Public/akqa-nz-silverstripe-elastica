@@ -10,7 +10,6 @@ use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Model\SiteTree;
-use SilverStripe\Dev\Deprecation;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
@@ -145,6 +144,7 @@ class Searchable extends DataExtension
     {
         $fields = $this->owner->config()->get('indexed_fields');
         $normalised = [];
+
         foreach ($fields as $fieldName => $params) {
             // Normalise field into name, specs (array)
             if (is_array($params) && is_numeric($fieldName)) {
@@ -249,31 +249,6 @@ class Searchable extends DataExtension
     }
 
     /**
-     * Get elastica fields
-     *
-     * @return array
-     * @deprecated Use getElasticaFields()
-     */
-    public function getSearchableFields()
-    {
-        Deprecation::notice('3.0.0', 'Just call getElasticaFields directly');
-        return $this->getElasticaFields();
-    }
-
-    /**
-     * Get the searchable fields for the relationships of the owner data object
-     * Note we currently only go one layer down eg the property of the document can be Relation_RelationField
-     *
-     * @return array
-     * @deprecated
-     */
-    protected function getReferenceSearchableFields()
-    {
-        Deprecation::notice('2.0.0', 'Use getElasticaFields instead');
-        return $this->getElasticaFields();
-    }
-
-    /**
      * Clean up the data type name
      * @param string $dataType
      * @return string
@@ -347,7 +322,8 @@ class Searchable extends DataExtension
      */
     public function getElasticaDocument()
     {
-        $document = new Document($this->owner->ID);
+        $id = str_replace('\\', '_', $this->owner->getElasticaType()) . '_' . $this->owner->ID;
+        $document = new Document($id);
 
         // Add all nested field values
         foreach ($this->getSearchableFieldValues() as $field => $value) {
