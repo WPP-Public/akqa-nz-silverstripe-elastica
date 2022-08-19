@@ -354,6 +354,13 @@ class ElasticaService
         }
     }
 
+
+    public function getVersion(): string
+    {
+        return $this->getClient()->getVersion();
+    }
+
+
     /**
      * Creates the index and the type mappings.
      *
@@ -374,12 +381,9 @@ class ElasticaService
         }
 
         foreach ($this->getIndexedClasses() as $class) {
-            /**
-             * @var Searchable
-             */
+            /** @var Searchable */
             $sng = singleton($class);
             $props = $sng->getElasticaMapping();
-
             $props->send($index);
         }
     }

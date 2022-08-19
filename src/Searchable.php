@@ -313,7 +313,14 @@ class Searchable extends DataExtension
 
         if (count($fields)) {
             $mapping = new Mapping();
-            $mapping->setParam('_doc', ['properties' => $fields]);
+
+            $version = $this->service->getVersion();
+
+            if ($version == 6) {
+                $mapping->setParam('_doc', ['properties' => $fields]);
+            } else {
+                $mapping->setParam('properties', $fields);
+            }
 
             return $mapping;
         }
