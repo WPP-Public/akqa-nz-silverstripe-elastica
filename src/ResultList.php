@@ -11,6 +11,7 @@ use Elastica\ResultSet;
 use Exception;
 use LogicException;
 use Psr\Log\LoggerInterface;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\ArrayList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\FieldType\DBField;
@@ -95,9 +96,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
      */
     public function getIDs()
     {
-        /**
- * @var $found Result[]
-*/
+        /** @var $found Result[] */
         $found = $this->getResults();
 
         $ids = [];
@@ -202,17 +201,28 @@ class ResultList extends ViewableData implements SS_List, Limitable
                       : false;
 
                     if (empty($type)) {
-                        throw new LogicException("type field not available");
+                        Injector::inst()->get(LoggerInterface::class)
+                            ->warn('no type field found on result: '. $item->getId());
+
+                        continue;
                     }
+
                     if (!array_key_exists($type, $needed)) {
                         $needed[$type] = [$item->getId()];
+
                         $retrieved[$type] = [];
                     } else {
                         $needed[$type][] = $item->getId();
                     }
                 }
 
-                foreach ($needed as $class => $ids) {
+                foreach ($needed as $class => $documentIds) {
+                    $ids = array_map(function($documentId) {
+                        $parts = preg_split('/_/', $documentId);
+
+                        return end($parts);
+                    }, $documentIds);
+
                     foreach (DataObject::get($class)->byIDs($ids) as $record) {
                         $retrieved[$class][$record->ID] = $record;
                     }
@@ -225,10 +235,12 @@ class ResultList extends ViewableData implements SS_List, Limitable
                       : false;
 
                     if (empty($type)) {
-                        throw new LogicException("type field not available");
+                        continue;
                     }
 
-                    $id = $item->getId();
+                    $documentId = $item->getId();
+                    $parts = preg_split('/_/', $documentId);
+                    $id = end($parts);
 
                     if (!isset($retrieved[$type][$id])) {
                         continue;

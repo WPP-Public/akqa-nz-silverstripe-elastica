@@ -147,8 +147,13 @@ class ElasticaService
             function () {
                 $index = $this->getIndex();
                 $config = $this->getIndexConfig() ?: [];
-                $forceRecreate = !empty($config);
-                return $index->create($config, $forceRecreate);
+
+                try {
+                    $output = $index->create($config);
+                    return $output;
+                } catch (\Throwable $e) {
+                    throw new Exception($e);
+                }
             }
         );
     }
@@ -370,13 +375,15 @@ class ElasticaService
     public function define($recreate = false)
     {
         $index = $this->getIndex();
+        $exists = $index->exists();
 
-        if ($index->exists() && $recreate) {
+        if ($exists && $recreate) {
             // Delete the existing index so it can be recreated from scratch
             $index->delete();
+            $exists = false;
         }
 
-        if (!$index->exists()) {
+        if (!$exists) {
             $this->createIndex();
         }
 
