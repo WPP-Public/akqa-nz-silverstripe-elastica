@@ -134,7 +134,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
                 $this->resultSet = $this->index->search($this->query);
             } catch (Exception $e) {
                 if ($this->logger) {
-                    $this->logger->critical($e->getMessage());
+                    $this->logger->warning($e);
                 }
             }
         }
