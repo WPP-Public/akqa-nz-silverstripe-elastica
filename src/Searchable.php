@@ -4,12 +4,14 @@ namespace Heyday\Elastica;
 
 use BadMethodCallException;
 use Elastica\Document;
+use Elastica\Exception\Connection\HttpException;
 use Elastica\Mapping;
 use Exception;
 use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\Injector\Injector;
 use SilverStripe\ORM\DataExtension;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
@@ -446,7 +448,14 @@ class Searchable extends DataExtension
      */
     public function onBeforeDelete()
     {
-        $this->service->remove($this->owner);
+        try {
+            $this->service->remove($this->owner);
+        } catch (HttpException $e) {
+            if ($e->getCode() !== 404) {
+                Injector::inst()->get(LoggerInterface::class)->error($e);
+            }
+        }
+
         if ($this->getUseQueuedJobs()) {
             $this->queueReindex();
         } else {
