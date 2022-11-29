@@ -460,16 +460,14 @@ class ElasticaService
 
     /**
      * If a logger is configured, log the exception there.
-     * Otherwise the exception is thrown
      *
-     * @param  Exception $exception
-     * @throws Exception
+     * @param  Exception $exception\
      */
     protected function exception($exception)
     {
         // If no logger specified expose error normally
         if (!$this->logger) {
-            throw $exception;
+            return;
         }
 
         $message = sprintf(
@@ -516,7 +514,6 @@ class ElasticaService
      *
      * @param  callable $callback A callback that generates an Elastica Response object
      * @return Response The response
-     * @throws Exception
      */
     protected function runQuery(callable $callback)
     {
