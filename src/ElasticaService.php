@@ -105,10 +105,14 @@ class ElasticaService
     }
 
     /**
-     * @return Index
+     * @return ?Index
      */
     public function getIndex()
     {
+        if (!$this->indexName) {
+            return null;
+        }
+
         return $this->getClient()->getIndex($this->indexName);
     }
 
@@ -209,9 +213,14 @@ class ElasticaService
         // Add document
         return $this->runQuery(
             function () use ($index, $document) {
-                $response = $index->addDocument($document);
-                $index->refresh();
-                return $response;
+                if ($index) {
+                    $response = $index->addDocument($document);
+                    $index->refresh();
+
+                    return $response;
+                }
+
+                return null;
             }
         );
     }
@@ -341,6 +350,11 @@ class ElasticaService
 
         try {
             $index = $this->getIndex();
+
+            if (!$index) {
+                return false;
+            }
+
             $typeName = $record->getElasticaType();
             $document = $record->getElasticaDocument();
             // If batching
