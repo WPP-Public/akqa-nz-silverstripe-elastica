@@ -419,7 +419,7 @@ class Searchable extends DataExtension
             return;
         }
 
-        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->getField('ShowInSearch')) {
+        if (!$versionToIndex->hasField('ShowInSearch') || $versionToIndex->ShowInSearch) {
             $this->service->index($versionToIndex);
         } else {
             $this->service->remove($versionToIndex);
@@ -505,7 +505,7 @@ class Searchable extends DataExtension
 
                 foreach ($list as $object) {
                     if ($object instanceof DataObject && $object->hasExtension(Searchable::class)) {
-                        if (!$object->hasField('ShowInSearch') || $object->getField('ShowInSearch')) {
+                        if (!$object->hasField('ShowInSearch') || $object->ShowInSearch) {
                             $this->service->index($object);
                         } else {
                             $this->service->remove($object);
