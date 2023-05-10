@@ -143,9 +143,9 @@ class ResultList extends ViewableData implements SS_List, Limitable
     }
 
     /**
-     * @return ArrayIterator|Traversable
+     * @return Traversable
      */
-    public function getIterator()
+    public function getIterator(): Traversable
     {
         return new ArrayIterator($this->toArray());
     }
@@ -155,7 +155,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
      * @param  int $offset
      * @return ResultList
      */
-    public function limit($limit, $offset = 0)
+    public function limit(?int $limit, int $offset = 0): Limitable
     {
         $list = clone $this;
 
@@ -395,7 +395,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     /**
      * @inheritdoc
      */
-    public function offsetExists($offset): bool
+    public function offsetExists(mixed $offset): bool
     {
         $array = $this->toArray();
         return array_key_exists($offset, $array);
@@ -404,7 +404,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
     /**
      * @inheritdoc
      */
-    public function offsetGet($offset)
+    public function offsetGet(mixed $offset): mixed
     {
         $array = $this->toArray();
         return isset($array[$offset]) ? $array[$offset] : null;
