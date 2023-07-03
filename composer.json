@@ -15,6 +15,7 @@
     },
     "require": {
         "ruflin/elastica": "^7",
+        "silverstripe/framework": "^4",
         "elasticsearch/elasticsearch": ">=7.3.0",
         "symbiote/silverstripe-queuedjobs": "*"
     },

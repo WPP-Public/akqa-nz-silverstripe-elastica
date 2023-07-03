@@ -54,9 +54,9 @@ class ResultList extends ViewableData implements SS_List, Limitable
         //Optimise the query by just getting back the ids and types
         $query->setStoredFields(
             [
-            '_id',
-            Searchable::TYPE_FIELD,
-            'highlight'
+                '_id',
+                Searchable::TYPE_FIELD,
+                'highlight'
             ]
         );
 
@@ -153,7 +153,6 @@ class ResultList extends ViewableData implements SS_List, Limitable
     /**
      * @param  int $limit
      * @param  int $offset
-     * @return ResultList
      */
     public function limit($limit, $offset = 0)
     {
@@ -167,7 +166,6 @@ class ResultList extends ViewableData implements SS_List, Limitable
 
     /**
      * @param  array $sortArgs
-     * @return ResultList
      */
     public function sort(array $sortArgs)
     {
@@ -197,12 +195,12 @@ class ResultList extends ViewableData implements SS_List, Limitable
             if (is_array($found) || $found instanceof ArrayAccess) {
                 foreach ($found as $item) {
                     $type = isset($item->{Searchable::TYPE_FIELD}[0])
-                      ? $item->{Searchable::TYPE_FIELD}[0]
-                      : false;
+                        ? $item->{Searchable::TYPE_FIELD}[0]
+                        : false;
 
                     if (empty($type)) {
                         Injector::inst()->get(LoggerInterface::class)
-                            ->warn('no type field found on result: '. $item->getId());
+                            ->warn('no type field found on result: ' . $item->getId());
 
                         continue;
                     }
@@ -217,7 +215,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
                 }
 
                 foreach ($needed as $class => $documentIds) {
-                    $ids = array_map(function($documentId) {
+                    $ids = array_map(function ($documentId) {
                         $parts = preg_split('/_/', $documentId);
 
                         return end($parts);
@@ -231,8 +229,8 @@ class ResultList extends ViewableData implements SS_List, Limitable
                 foreach ($found as $item) {
                     // Safeguards against indexed items which might no longer be in the DB
                     $type = isset($item->{Searchable::TYPE_FIELD}[0])
-                      ? $item->{Searchable::TYPE_FIELD}[0]
-                      : false;
+                        ? $item->{Searchable::TYPE_FIELD}[0]
+                        : false;
 
                     if (empty($type)) {
                         continue;
