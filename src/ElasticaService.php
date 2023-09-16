@@ -414,9 +414,8 @@ class ElasticaService
             $this->createIndex();
         }
 
-        foreach ($this->getIndexedClasses($class) as $class) {
+        foreach ($this->getIndexedClasses($class) as $sng) {
             /** @var Searchable */
-            $sng = singleton($class);
             $props = $sng->getElasticaMapping();
             $props->send($index);
         }
@@ -434,8 +433,14 @@ class ElasticaService
             function () use ($chunkSize, $class) {
                 Versioned::set_stage(Versioned::LIVE);
 
-                foreach ($this->getIndexedClasses($class) as $class) {
-                    foreach (DataObject::get($class)->chunkedFetch($chunkSize) as $record) {
+                foreach ($this->getIndexedClasses($class) as $sng) {
+                    if ($sng->hasMethod('getDataListToIndex')) {
+                        $list = $sng->getDataListToIndex();
+                    } else {
+                        $list = $sng::get();
+                    }
+
+                    foreach ($list->chunkedFetch($chunkSize) as $record) {
                         // Only index records with Show In Search enabled, or those that don't expose that fielid
                         if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
                             if ($this->index($record)) {
@@ -465,7 +470,7 @@ class ElasticaService
         foreach ($class ? [$class] : ClassInfo::subclassesFor(DataObject::class) as $candidate) {
             $candidateInstance = DataObject::singleton($candidate);
             if ($candidateInstance->hasExtension($this->searchableExtensionClassName)) {
-                $classes[] = $candidate;
+                $classes[] = $candidateInstance;
             }
         }
         return $classes;
