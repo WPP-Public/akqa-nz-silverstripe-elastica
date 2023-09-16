@@ -423,17 +423,17 @@ class ElasticaService
 
     /**
      * Re-indexes each record in the index.
-     *
+     * @param  int $chunkSize
      * @throws Exception
      */
-    public function refresh()
+    public function refresh($chunkSize = 1000)
     {
         Versioned::withVersionedMode(
-            function () {
+            function () use ($chunkSize) {
                 Versioned::set_stage(Versioned::LIVE);
 
                 foreach ($this->getIndexedClasses() as $class) {
-                    foreach (DataObject::get($class) as $record) {
+                    foreach (DataObject::get($class)->chunkedFetch($chunkSize) as $record) {
                         // Only index records with Show In Search enabled, or those that don't expose that fielid
                         if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
                             if ($this->index($record)) {

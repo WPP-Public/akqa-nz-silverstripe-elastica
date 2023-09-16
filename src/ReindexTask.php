@@ -53,5 +53,11 @@ class ReindexTask extends BuildTask
 
         $message('Refreshing the index');
         $this->service->refresh();
+
+        if (($chunkSize = (int) $request->getVar('chunkSize')) <= 0) {
+            $chunkSize = 1000;
+        }
+
+        $this->service->refresh($chunkSize);
     }
 }
