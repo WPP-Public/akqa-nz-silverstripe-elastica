@@ -387,7 +387,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
      */
     public function getTotalItems()
     {
-        return $this->getResults()->getTotalHits();
+        return ($results = $this->getResults()) ? $results->getTotalHits() : 0;
     }
 
     /**
