@@ -395,10 +395,11 @@ class ElasticaService
     /**
      * Creates the index and the type mappings.
      *
-     * @param  bool $recreate
+     * @param  bool   $recreate
+     * @param  string $class
      * @throws Exception
      */
-    public function define($recreate = false)
+    public function define($recreate = false, $class = null)
     {
         $index = $this->getIndex();
         $exists = $index->exists();
@@ -413,7 +414,7 @@ class ElasticaService
             $this->createIndex();
         }
 
-        foreach ($this->getIndexedClasses() as $class) {
+        foreach ($this->getIndexedClasses($class) as $class) {
             /** @var Searchable */
             $sng = singleton($class);
             $props = $sng->getElasticaMapping();
@@ -423,16 +424,17 @@ class ElasticaService
 
     /**
      * Re-indexes each record in the index.
-     * @param  int $chunkSize
+     * @param  int    $chunkSize
+     * @param  string $class
      * @throws Exception
      */
-    public function refresh($chunkSize = 1000)
+    public function refresh($chunkSize = 1000, $class = null)
     {
         Versioned::withVersionedMode(
-            function () use ($chunkSize) {
+            function () use ($chunkSize, $class) {
                 Versioned::set_stage(Versioned::LIVE);
 
-                foreach ($this->getIndexedClasses() as $class) {
+                foreach ($this->getIndexedClasses($class) as $class) {
                     foreach (DataObject::get($class)->chunkedFetch($chunkSize) as $record) {
                         // Only index records with Show In Search enabled, or those that don't expose that fielid
                         if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
@@ -453,13 +455,14 @@ class ElasticaService
     /**
      * Gets the classes which are indexed (i.e. have the extension applied).
      *
+     * @param  string $class
      * @return array
      * @throws ReflectionException
      */
-    public function getIndexedClasses()
+    public function getIndexedClasses($class = null)
     {
         $classes = array();
-        foreach (ClassInfo::subclassesFor(DataObject::class) as $candidate) {
+        foreach ($class ? [$class] : ClassInfo::subclassesFor(DataObject::class) as $candidate) {
             $candidateInstance = DataObject::singleton($candidate);
             if ($candidateInstance->hasExtension($this->searchableExtensionClassName)) {
                 $classes[] = $candidate;
