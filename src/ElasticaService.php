@@ -130,13 +130,25 @@ class ElasticaService
      * @param  Query|string|array $query
      * @param  array              $options          Options defined in \Elastica\Search
      * @param  bool               $returnResultList
+     * @param  bool|int           $trackTotalHits
      * @return ResultList | ResultSet
      */
-    public function search($query, $options = null, $returnResultList = true)
+    public function search($query, $options = null, $returnResultList = true, $trackTotalHits = false)
     {
         if ($returnResultList) {
-            return new ResultList($this->getIndex(), Query::create($query), $this->logger);
+            $query = Query::create($query);
+
+            if ($trackTotalHits) {
+                $query = $query->setTrackTotalHits(true);
+            }
+
+            return new ResultList($this->getIndex(), $query, $this->logger);
         }
+
+        if ($trackTotalHits) {
+            $query = Query::create($query)->setTrackTotalHits(true);
+        }
+
         return $this->getIndex()->search($query, $options);
     }
 
