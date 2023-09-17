@@ -221,12 +221,20 @@ class Searchable extends DataExtension
      * if needed. First we go through all the regular fields belonging to pages, then to the dataobjects related to
      * those pages
      *
+     * @param  array $onlyFields
      * @return array
      */
-    public function getElasticaFields()
+    public function getElasticaFields($onlyFields = [])
     {
+        $indexedFields = $this->owner->indexedFields();
+
+        if ($onlyFields) {
+            $indexedFields = array_intersect_key($indexedFields, $onlyFields);
+            $indexedFields = array_replace_recursive($indexedFields, $onlyFields);
+        }
+
         $result = [];
-        foreach ($this->owner->indexedFields() as $fieldName => $params) {
+        foreach ($indexedFields as $fieldName => $params) {
             $field = isset($params['field'])
                 ? $params['field']
                 : $fieldName;
@@ -246,6 +254,9 @@ class Searchable extends DataExtension
                 $result = array_merge($result, $nestedFields);
                 continue;
             }
+
+            // Don't send these to elasticsearch
+            unset($params['only_fields']);
 
             // Get extra params
             $params = $this->getExtraFieldParams($field, $params);
@@ -354,12 +365,20 @@ class Searchable extends DataExtension
      * Get values for all searchable fields as an array.
      * Similr to getSearchableFields() but returns field values instead of spec
      *
+     * @param  array $onlyFields
      * @return array
      */
-    public function getSearchableFieldValues()
+    public function getSearchableFieldValues($onlyFields = [])
     {
+        $indexedFields = $this->owner->indexedFields();
+
+        if ($onlyFields) {
+            $indexedFields = array_intersect_key($indexedFields, $onlyFields);
+            $indexedFields = array_replace_recursive($indexedFields, $onlyFields);
+        }
+
         $fieldValues = [];
-        foreach ($this->owner->indexedFields() as $fieldName => $params) {
+        foreach ($indexedFields as $fieldName => $params) {
             $field = isset($params['field'])
                 ? $params['field']
                 : $fieldName;
@@ -376,6 +395,8 @@ class Searchable extends DataExtension
 
             // Get value from object
             if ($this->owner->hasField($field)) {
+                unset($params['only_fields']);
+
                 // Check field exists on parent
                 $params = $this->getExtraFieldParams($field, $params);
                 $fieldValue = $this->formatValue($params, $this->owner->relField($field));
@@ -559,7 +580,14 @@ class Searchable extends DataExtension
         }
 
         // Get nested fields
-        $nestedFields = $related->getElasticaFields();
+
+        if (isset($params['only_fields'])) {
+            $nestedFields = $related->getElasticaFields($params['only_fields']);
+
+            unset($params['only_fields']);
+        } else {
+            $nestedFields = $related->getElasticaFields();
+        }
 
         // Determine if merging into parent as either a multilevel object (default)
         // or nested objects (requires 'nested' param to be set)
@@ -643,8 +671,15 @@ class Searchable extends DataExtension
              * @var DataObject|Searchable $relationListItem
              */
             foreach ($relatedList as $relationListItem) {
-                $relationValues[] = $relationListItem->getSearchableFieldValues();
+                if (isset($params['only_fields'])) {
+                    $searchableFieldValues = $relationListItem->getSearchableFieldValues($params['only_fields']);
+                } else {
+                    $searchableFieldValues = $relationListItem->getSearchableFieldValues();
+                }
+
+                $relationValues[] = $searchableFieldValues;
             }
+
             return [$fieldName => $relationValues];
         }
 
@@ -653,9 +688,15 @@ class Searchable extends DataExtension
         // Handle unary-multilevel
         // I.e. Relation_Field = 'value'
         if ($isUnary) {
+            if (isset($params['only_fields'])) {
+                $searchableFieldValues = $relatedItem->getSearchableFieldValues($params['only_fields']);
+            } else {
+                $searchableFieldValues = $relatedItem->getSearchableFieldValues();
+            }
+
             // We will return multiple values, one for each sub-column
             $fieldValues = [];
-            foreach ($relatedItem->getSearchableFieldValues() as $relatedFieldName => $relatedFieldValue) {
+            foreach ($searchableFieldValues as $relatedFieldName => $relatedFieldValue) {
                 $nestedName = "{$fieldName}_{$relatedFieldName}";
                 $fieldValues[$nestedName] = $relatedItem->IsInDB() ? $relatedFieldValue : null;
             }
@@ -666,16 +707,29 @@ class Searchable extends DataExtension
         // I.e. Relation_Field = ['value1', 'value2']
         $fieldValues = [];
 
+
+        if (isset($params['only_fields'])) {
+            $elasticaFields = $relatedSingleton->getElasticaFields($params['only_fields']);
+        } else {
+            $elasticaFields = $relatedSingleton->getElasticaFields();
+        }
+
         // Bootstrap set with empty arrays for each top level key
         // This also ensures we set empty data if $relatedList is empty
-        foreach ($relatedSingleton->getElasticaFields() as $relatedFieldName => $spec) {
+        foreach ($elasticaFields as $relatedFieldName => $spec) {
             $nestedName = "{$fieldName}_{$relatedFieldName}";
             $fieldValues[$nestedName] = [];
         }
 
         // Add all documents to the list
         foreach ($relatedList as $relatedListItem) {
-            foreach ($relatedListItem->getSearchableFieldValues() as $relatedFieldName => $relatedFieldValue) {
+            if (isset($params['only_fields'])) {
+                $searchableFieldValues = $relatedListItem->getSearchableFieldValues($params['only_fields']);
+            } else {
+                $searchableFieldValues = $relatedListItem->getSearchableFieldValues();
+            }
+
+            foreach ($searchableFieldValues as $relatedFieldName => $relatedFieldValue) {
                 $nestedName = "{$fieldName}_{$relatedFieldName}";
                 $fieldValues[$nestedName][] = $relatedFieldValue;
             }
