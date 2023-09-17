@@ -230,15 +230,17 @@ class Searchable extends DataExtension
             $field = isset($params['field'])
                 ? $params['field']
                 : $fieldName;
-            $relationClass = isset($params['relationClass'])
-                ? $params['relationClass']
-                : $this->owner->getRelationClass($fieldName);
 
             // Don't send these to elasticsearch
-            unset($params['relationClass'], $params['field']);
+            unset($params['field']);
 
             // Build nested field from relation
-            if ($relationClass) {
+            if (isset($params['relationClass'])) {
+                $relationClass = $params['relationClass'];
+
+                // Don't send these to elasticsearch
+                unset($params['relationClass']);
+
                 // Relations can add multiple fields, so merge them all here
                 $nestedFields = $this->getSearchableFieldsForRelation($fieldName, $params, $relationClass);
                 $result = array_merge($result, $nestedFields);
@@ -358,16 +360,14 @@ class Searchable extends DataExtension
     {
         $fieldValues = [];
         foreach ($this->owner->indexedFields() as $fieldName => $params) {
-            // Check nested relation class
-            $relationClass = isset($params['relationClass'])
-                ? $params['relationClass']
-                : $this->owner->getRelationClass($fieldName);
             $field = isset($params['field'])
                 ? $params['field']
                 : $fieldName;
 
             // Build nested field from relation
-            if ($relationClass) {
+            if (isset($params['relationClass'])) {
+                $relationClass = $params['relationClass'];
+
                 // Relations can add multiple fields, so merge them all here
                 $nestedFieldValues = $this->getSearchableFieldValuesForRelation($fieldName, $params, $relationClass);
                 $fieldValues = array_merge($fieldValues, $nestedFieldValues);
