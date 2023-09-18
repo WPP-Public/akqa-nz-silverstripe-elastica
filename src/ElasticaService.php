@@ -130,13 +130,25 @@ class ElasticaService
      * @param  Query|string|array $query
      * @param  array              $options          Options defined in \Elastica\Search
      * @param  bool               $returnResultList
+     * @param  bool|int           $trackTotalHits
      * @return ResultList | ResultSet
      */
-    public function search($query, $options = null, $returnResultList = true)
+    public function search($query, $options = null, $returnResultList = true, $trackTotalHits = false)
     {
         if ($returnResultList) {
-            return new ResultList($this->getIndex(), Query::create($query), $this->logger);
+            $query = Query::create($query);
+
+            if ($trackTotalHits) {
+                $query = $query->setTrackTotalHits(true);
+            }
+
+            return new ResultList($this->getIndex(), $query, $this->logger);
         }
+
+        if ($trackTotalHits) {
+            $query = Query::create($query)->setTrackTotalHits(true);
+        }
+
         return $this->getIndex()->search($query, $options);
     }
 
@@ -383,10 +395,11 @@ class ElasticaService
     /**
      * Creates the index and the type mappings.
      *
-     * @param  bool $recreate
+     * @param  bool   $recreate
+     * @param  string $class
      * @throws Exception
      */
-    public function define($recreate = false)
+    public function define($recreate = false, $class = null)
     {
         $index = $this->getIndex();
         $exists = $index->exists();
@@ -401,9 +414,8 @@ class ElasticaService
             $this->createIndex();
         }
 
-        foreach ($this->getIndexedClasses() as $class) {
+        foreach ($this->getIndexedClasses($class) as $sng) {
             /** @var Searchable */
-            $sng = singleton($class);
             $props = $sng->getElasticaMapping();
             $props->send($index);
         }
@@ -411,17 +423,24 @@ class ElasticaService
 
     /**
      * Re-indexes each record in the index.
-     *
+     * @param  int    $chunkSize
+     * @param  string $class
      * @throws Exception
      */
-    public function refresh()
+    public function refresh($chunkSize = 1000, $class = null)
     {
         Versioned::withVersionedMode(
-            function () {
+            function () use ($chunkSize, $class) {
                 Versioned::set_stage(Versioned::LIVE);
 
-                foreach ($this->getIndexedClasses() as $class) {
-                    foreach (DataObject::get($class) as $record) {
+                foreach ($this->getIndexedClasses($class) as $sng) {
+                    if ($sng->hasMethod('getDataListToIndex')) {
+                        $list = $sng->getDataListToIndex();
+                    } else {
+                        $list = $sng::get();
+                    }
+
+                    foreach ($list->chunkedFetch($chunkSize) as $record) {
                         // Only index records with Show In Search enabled, or those that don't expose that fielid
                         if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
                             if ($this->index($record)) {
@@ -441,16 +460,17 @@ class ElasticaService
     /**
      * Gets the classes which are indexed (i.e. have the extension applied).
      *
+     * @param  string $class
      * @return array
      * @throws ReflectionException
      */
-    public function getIndexedClasses()
+    public function getIndexedClasses($class = null)
     {
         $classes = array();
-        foreach (ClassInfo::subclassesFor(DataObject::class) as $candidate) {
+        foreach ($class ? [$class] : ClassInfo::subclassesFor(DataObject::class) as $candidate) {
             $candidateInstance = DataObject::singleton($candidate);
             if ($candidateInstance->hasExtension($this->searchableExtensionClassName)) {
-                $classes[] = $candidate;
+                $classes[] = $candidateInstance;
             }
         }
         return $classes;

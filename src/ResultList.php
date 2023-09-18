@@ -60,7 +60,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
             ]
         );
 
-        if (Versioned::get_reading_mode() == Versioned::LIVE) {
+        if (Versioned::get_reading_mode() === 'Stage.' . Versioned::LIVE) {
             $publishedFilter = $query->hasParam('post_filter') ? $query->getParam('post_filter') : null;
 
             if (!$publishedFilter) {
@@ -221,7 +221,15 @@ class ResultList extends ViewableData implements SS_List, Limitable
                         return end($parts);
                     }, $documentIds);
 
-                    foreach (DataObject::get($class)->byIDs($ids) as $record) {
+                    $sng = singleton($class);
+
+                    if ($sng->hasMethod('getDataListToIndex')) {
+                        $list = $sng->getDataListToIndex();
+                    } else {
+                        $list = $sng::get();
+                    }
+
+                    foreach ($list->byIDs($ids) as $record) {
                         $retrieved[$class][$record->ID] = $record;
                     }
                 }
@@ -387,7 +395,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
      */
     public function getTotalItems()
     {
-        return $this->getResults()->getTotalHits();
+        return ($results = $this->getResults()) ? $results->getTotalHits() : 0;
     }
 
     /**
