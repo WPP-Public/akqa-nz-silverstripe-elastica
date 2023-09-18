@@ -221,7 +221,15 @@ class ResultList extends ViewableData implements SS_List, Limitable
                         return end($parts);
                     }, $documentIds);
 
-                    foreach (DataObject::get($class)->byIDs($ids) as $record) {
+                    $sng = singleton($class);
+
+                    if ($sng->hasMethod('getDataListToIndex')) {
+                        $list = $sng->getDataListToIndex();
+                    } else {
+                        $list = $sng::get();
+                    }
+
+                    foreach ($list->byIDs($ids) as $record) {
                         $retrieved[$class][$record->ID] = $record;
                     }
                 }
