@@ -60,7 +60,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
             ]
         );
 
-        if (Versioned::get_reading_mode() == Versioned::LIVE) {
+        if (Versioned::get_reading_mode() === 'Stage.' . Versioned::LIVE) {
             $publishedFilter = $query->hasParam('post_filter') ? $query->getParam('post_filter') : null;
 
             if (!$publishedFilter) {
