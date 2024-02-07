@@ -9,6 +9,15 @@ namespace Heyday\Elastica;
  */
 class PaginatedList extends \SilverStripe\ORM\PaginatedList
 {
+    protected $list;
+
+    public function __construct(ResultList $list, $request = [])
+    {
+        $this->setRequest($request);
+        $this->list = $list;
+    }
+
+
     /**
      * Use the ResultList's total items method to determine this value
      *
