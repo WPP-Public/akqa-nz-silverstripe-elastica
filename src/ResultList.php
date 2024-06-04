@@ -297,7 +297,6 @@ class ResultList extends ViewableData implements SS_List, Limitable
         try {
             $from = $this->getQuery()->getParam('from');
         } catch (Exception $e) {
-            dd($e);
             $from = 1;
         }
 
