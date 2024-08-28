@@ -202,7 +202,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
 
                     if (empty($type)) {
                         Injector::inst()->get(LoggerInterface::class)
-                            ->warn('no type field found on result: '. $item->getId());
+                            ->warning('no type field found on result: '. $item->getId());
 
                         continue;
                     }
