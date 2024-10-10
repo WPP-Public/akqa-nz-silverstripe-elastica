@@ -48,7 +48,7 @@ class PaginatedList extends SilverStripePaginatedList
 
     public function setPageLength($length)
     {
-        $this->setPageLength($length);
+        parent::setPageLength($length);
         $this->list = $this->resultList->limit($length, $this->getPageStart())->toArrayList();
 
         return $this;
