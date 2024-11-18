@@ -84,7 +84,7 @@ class ElasticaService
      */
     public function __construct(
         Client $client,
-        $indexName,
+               $indexName,
         LoggerInterface $logger = null,
         $indexingMemory = null,
         $searchableExtensionClassName = Searchable::class
@@ -412,12 +412,13 @@ class ElasticaService
     /**
      * Re-indexes each record in the index.
      *
+     * @param  bool $withBatch
      * @throws Exception
      */
-    public function refresh()
+    public function refresh($withBatch = false)
     {
         Versioned::withVersionedMode(
-            function () {
+            function () use ($withBatch) {
                 Versioned::set_stage(Versioned::LIVE);
 
                 foreach ($this->getIndexedClasses() as $class) {
@@ -425,22 +426,36 @@ class ElasticaService
 
                     $this->printMessage($list->count(), sprintf('FOUND %s records of type %s', $list->count(), $class));
 
-                    $records = $list->chunkedFetch();
-                    foreach ($records as $record) {
-                        // Only index records with Show In Search enabled, or those that don't expose that field
-                        if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
-                            if ($this->index($record)) {
-                                $this->printActionMessage($record, 'INDEXED');
-                            } else {
-                                $this->printActionMessage($record, 'ERROR INDEXING');
+                    $total = $list->count();
+                    $offset = 0;
+                    $limit = 1000;
+
+                    while ($offset < $total) {
+                        $indexFunction = function() use ($list, $limit, $offset) {
+                            $records = $list->limit($limit, $offset);
+                            foreach ($records as $record) {
+                                // Only index records with Show In Search enabled, or those that don't expose that field
+                                if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
+                                    if ($this->index($record)) {
+                                        $this->printActionMessage($record, 'INDEXED');
+                                    } else {
+                                        $this->printActionMessage($record, 'ERROR INDEXING');
+                                    }
+                                } else {
+                                    if ($this->remove($record)) {
+                                        $this->printActionMessage($record, 'REMOVED');
+                                    } else {
+                                        $this->printActionMessage($record, 'ERROR REMOVING');
+                                    }
+                                }
                             }
+                        };
+                        if ($withBatch) {
+                            $this->batch($indexFunction);
                         } else {
-                            if ($this->remove($record)) {
-                                $this->printActionMessage($record, 'REMOVED');
-                            } else {
-                                $this->printActionMessage($record, 'ERROR REMOVING');
-                            }
+                            $indexFunction();
                         }
+                        $offset += $limit;
                     }
                 }
             }
