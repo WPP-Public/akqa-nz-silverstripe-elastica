@@ -47,11 +47,33 @@ class ReindexTask extends BuildTask
             print(Director::is_cli() ? "$content\n" : "<p>$content</p>");
         };
 
-        $message('Defining the mappings');
-        $recreate = (bool) $request->getVar('recreate');
-        $this->service->define($recreate);
+        $class = $request->getVar('class');
 
-        $message('Refreshing the index');
-        $this->service->refresh();
+        if ($class && !class_exists($class)) {
+            $message("Class {$class} does not exist");
+
+            return;
+        }
+
+        if ($class) {
+            $message('Defining the mappings for class ' . $class);
+        } else {
+            $message('Defining the mappings');
+        }
+
+        $recreate = (bool) $request->getVar('recreate');
+        $this->service->define($recreate, $class);
+
+        if ($class) {
+            $message('Refreshing the index for class ' . $class);
+        } else {
+            $message('Refreshing the index');
+        }
+
+        if (($chunkSize = (int) $request->getVar('chunkSize')) <= 0) {
+            $chunkSize = 1000;
+        }
+
+        $this->service->refresh($chunkSize, $class);
     }
 }
