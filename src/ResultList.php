@@ -96,7 +96,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
      */
     public function getIDs()
     {
-        /** @var $found Result[] */
+        /** @var Result[] $found */
         $found = $this->getResults();
 
         $ids = [];
@@ -188,11 +188,11 @@ class ResultList extends ViewableData implements SS_List, Limitable
     public function toArray()
     {
         if (!is_array($this->resultsArray)) {
-            $this->resultsArray = array();
+            $this->resultsArray = [];
 
             $found = $this->getResults();
-            $needed = array();
-            $retrieved = array();
+            $needed = [];
+            $retrieved = [];
 
             if (is_array($found) || $found instanceof ArrayAccess) {
                 foreach ($found as $item) {
@@ -201,8 +201,13 @@ class ResultList extends ViewableData implements SS_List, Limitable
                       : false;
 
                     if (empty($type)) {
-                        Injector::inst()->get(LoggerInterface::class)
-                            ->warning('no type field found on result: '. $item->getId());
+                        // remove the item from the index
+                        try {
+                            $this->index->deleteById($item->getId());
+                        } catch (Exception $e) {
+                            Injector::inst()->get(LoggerInterface::class)
+                                ->warning('Error deleting item from index: ' . $e->getMessage());
+                        }
 
                         continue;
                     }
@@ -223,8 +228,22 @@ class ResultList extends ViewableData implements SS_List, Limitable
                         return end($parts);
                     }, $documentIds);
 
-                    foreach (DataObject::get($class)->byIDs($ids) as $record) {
-                        $retrieved[$class][$record->ID] = $record;
+                    $orphans = [];
+
+                    foreach ($ids as $id) {
+                        $record = DataObject::get($class)->byID($id);
+
+                        if (!$record) {
+                            $orphans[] = $id;
+                        }
+
+                        if ($record) {
+                            $retrieved[$class][$record->ID] = $record;
+                        }
+                    }
+
+                    foreach ($orphans as $id) {
+                        $this->index->deleteById($id);
                     }
                 }
 
@@ -389,7 +408,7 @@ class ResultList extends ViewableData implements SS_List, Limitable
      */
     public function getTotalItems()
     {
-        return count($this->toArray());
+        return $this->getResults()->getTotalHits();
     }
 
     /**
