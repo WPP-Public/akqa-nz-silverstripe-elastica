@@ -84,8 +84,8 @@ class ElasticaService
      */
     public function __construct(
         Client $client,
-               $indexName,
-        LoggerInterface $logger = null,
+        $indexName,
+        LoggerInterface $logger,
         $indexingMemory = null,
         $searchableExtensionClassName = Searchable::class
     ) {
@@ -412,50 +412,26 @@ class ElasticaService
     /**
      * Re-indexes each record in the index.
      *
-     * @param  bool $withBatch
      * @throws Exception
      */
-    public function refresh($withBatch = false)
+    public function refresh()
     {
         Versioned::withVersionedMode(
-            function () use ($withBatch) {
+            function () {
                 Versioned::set_stage(Versioned::LIVE);
 
                 foreach ($this->getIndexedClasses() as $class) {
-                    $list = DataObject::get($class);
-
-                    $this->printMessage($list->count(), sprintf('FOUND %s records of type %s', $list->count(), $class));
-
-                    $total = $list->count();
-                    $offset = 0;
-                    $limit = 1000;
-
-                    while ($offset < $total) {
-                        $indexFunction = function() use ($list, $limit, $offset) {
-                            $records = $list->limit($limit, $offset);
-                            foreach ($records as $record) {
-                                // Only index records with Show In Search enabled, or those that don't expose that field
-                                if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
-                                    if ($this->index($record)) {
-                                        $this->printActionMessage($record, 'INDEXED');
-                                    } else {
-                                        $this->printActionMessage($record, 'ERROR INDEXING');
-                                    }
-                                } else {
-                                    if ($this->remove($record)) {
-                                        $this->printActionMessage($record, 'REMOVED');
-                                    } else {
-                                        $this->printActionMessage($record, 'ERROR REMOVING');
-                                    }
-                                }
+                    foreach (DataObject::get($class) as $record) {
+                        // Only index records with Show In Search enabled, or those that don't expose that fielid
+                        if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
+                            if ($this->index($record)) {
+                                $this->printActionMessage($record, 'INDEXED');
                             }
-                        };
-                        if ($withBatch) {
-                            $this->batch($indexFunction);
                         } else {
-                            $indexFunction();
+                            if ($this->remove($record)) {
+                                $this->printActionMessage($record, 'REMOVED');
+                            }
                         }
-                        $offset += $limit;
                     }
                 }
             }
@@ -496,15 +472,6 @@ class ElasticaService
         }
     }
 
-    protected function printMessage(string $details, string $action)
-    {
-        if (Director::is_cli()) {
-            print "{$action}: {$details}\n";
-        } else {
-            print "<strong>{$action}: </strong>{$details}<br>";
-        }
-    }
-
     /**
      * If a logger is configured, log the exception there.
      *
@@ -530,10 +497,10 @@ class ElasticaService
     /**
      * Check if response has any errors
      *
-     * @param  Response|null $response
+     * @param  ?Response $response
      * @throws Exception
      */
-    protected function logResponse(Response $response = null)
+    protected function logResponse(?Response $response)
     {
         // Ignore empty or non-error responses
         if (!$response || $response->isOk()) {
