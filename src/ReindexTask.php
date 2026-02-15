@@ -2,19 +2,22 @@
 
 namespace Heyday\Elastica;
 
-use SilverStripe\Control\Director;
-use SilverStripe\Control\HTTPRequest;
 use SilverStripe\Dev\BuildTask;
+use SilverStripe\PolyExecution\PolyOutput;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
+
 /**
  * Defines and refreshes the elastic search index.
  */
 class ReindexTask extends BuildTask
 {
-    private static $segment = 'ElasticaReindexTask';
+    protected static string $commandName = 'elastica-reindex';
 
-    protected $title = 'Elastic Search Reindex';
+    protected string $title = 'Elastic Search Reindex';
 
-    protected $description = 'Refreshes the elastic search index';
+    protected static string $description = 'Refreshes the elastic search index';
 
     /**
      * @var ElasticaService
@@ -35,32 +38,25 @@ class ReindexTask extends BuildTask
     /**
      * Defines (creates and defines mappings for) the index and refreshes the index content.
      *
-     * You can delete the index before recreating it by adding `recreate=1` as a request argument, which can help
+     * You can delete the index before recreating it by adding `--recreate` option, which can help
      * when switching mapping types in your DataObject configuration.
-     *
-     * @param HTTPRequest $request
      */
-    public function run($request)
+    protected function execute(InputInterface $input, PolyOutput $output): int
     {
-        if (class_exists('\SilverStripe\Subsites\Model\Subsite')) {
-            \SilverStripe\Subsites\Model\Subsite::disable_subsite_filter(true);
-        }
-
-        $message = function ($content) {
-            print(Director::is_cli() ? "$content\n" : "<p>$content</p>");
-        };
-
-        $withBatch = (bool) $request->getVar('batch');
-        if ($withBatch) {
-            $message('batch processing is enabled to speed up the reindexing process');
-            //$this->service->enableBatch();
-        }
-
-        $message('Defining the mappings');
-        $recreate = (bool) $request->getVar('recreate');
+        $output->writeln('Defining the mappings');
+        $recreate = (bool) $input->getOption('recreate');
         $this->service->define($recreate);
 
-        $message('Refreshing the index');
-        $this->service->refresh($withBatch);
+        $output->writeln('Refreshing the index');
+        $this->service->refresh();
+
+        return Command::SUCCESS;
+    }
+
+    public function getOptions(): array
+    {
+        return [
+            new InputOption('recreate', null, InputOption::VALUE_NONE, 'Delete and recreate the index before reindexing'),
+        ];
     }
 }
