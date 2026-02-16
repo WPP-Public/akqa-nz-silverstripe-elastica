@@ -421,7 +421,10 @@ class ElasticaService
                 Versioned::set_stage(Versioned::LIVE);
 
                 foreach ($this->getIndexedClasses() as $class) {
-                    foreach (DataObject::get($class) as $record) {
+                    // Fetch records in chunks of 50
+                    $records = DataObject::get($class)->chunkedFetch(50);
+
+                    foreach ($records as $record) {
                         // Only index records with Show In Search enabled, or those that don't expose that fielid
                         if (!$record->hasField('ShowInSearch') || $record->ShowInSearch) {
                             if ($this->index($record)) {
