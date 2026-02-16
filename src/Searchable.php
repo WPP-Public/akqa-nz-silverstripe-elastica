@@ -11,12 +11,12 @@ use Heyday\Elastica\Jobs\ReindexAfterWriteJob;
 use Psr\Log\LoggerInterface;
 use SilverStripe\Assets\File;
 use SilverStripe\CMS\Model\SiteTree;
+use SilverStripe\Core\Extension;
 use SilverStripe\Core\Injector\Injector;
-use SilverStripe\ORM\DataExtension;
+use SilverStripe\Core\Validation\ValidationException;
 use SilverStripe\ORM\DataList;
 use SilverStripe\ORM\DataObject;
 use SilverStripe\ORM\DataObjectSchema;
-use SilverStripe\ORM\ValidationException;
 use SilverStripe\Versioned\Versioned;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 
@@ -25,7 +25,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
  *
  * @property DataObject|Searchable $owner
  */
-class Searchable extends DataExtension
+class Searchable extends Extension
 {
     /**
      * Key used by elastic to determine the type of document.
@@ -129,7 +129,7 @@ class Searchable extends DataExtension
      * @param ElasticaService $service
      * @param LoggerInterface $logger
      */
-    public function __construct(ElasticaService $service, LoggerInterface $logger = null)
+    public function __construct(ElasticaService $service, LoggerInterface $logger)
     {
         $this->service = $service;
         $this->logger = $logger;
@@ -374,11 +374,21 @@ class Searchable extends DataExtension
                 continue;
             }
 
-            // Get value from object
-            if ($this->owner->hasField($field)) {
-                // Check field exists on parent
+            // Check both database fields and methods for values
+            $hasDbField = $this->owner->hasField($field);
+            $hasMethod = $this->owner->hasMethod($field) || $this->owner->hasMethod('get' . $field);
+
+            if ($hasDbField || $hasMethod) {
                 $params = $this->getExtraFieldParams($field, $params);
-                $fieldValue = $this->formatValue($params, $this->owner->relField($field));
+
+                if ($hasDbField) {
+                    // Use relField for database fields
+                    $fieldValue = $this->formatValue($params, $this->owner->relField($field));
+                } else {
+                    // Use method for non-db fields
+                    $fieldValue = $this->formatValue($params, $this->owner->$field);
+                }
+
                 $fieldValues[$fieldName] = $fieldValue;
             }
         }
@@ -492,6 +502,28 @@ class Searchable extends DataExtension
     }
 
     /**
+     * Register callbacks on ManyManyList to trigger reindexing when relations change
+     *
+     * @param \SilverStripe\ORM\RelationList $list
+     */
+    public function updateManyManyComponents(\SilverStripe\ORM\RelationList &$list): void
+    {
+        $owner = $this->getOwner();
+
+        $list->addCallbacks()->add(function ($list, $item, $extraFields) use ($owner) {
+            if ($owner->hasExtension(Searchable::class)) {
+                $owner->onAfterManyManyRelationAdd();
+            }
+        });
+
+        $list->removeCallbacks()->add(function ($list, $removedIds) use ($owner) {
+            if ($owner->hasExtension(Searchable::class)) {
+                $owner->onAfterManyManyRelationRemove();
+            }
+        });
+    }
+
+    /**
      * Updates the records of all instances of dependent classes.
      *
      * @throws Exception
@@ -524,7 +556,7 @@ class Searchable extends DataExtension
      */
     protected function createAttachment(File $file)
     {
-        $value = base64_encode($file->getStream());
+        $value = base64_encode((string) $file->getStream() ?? '');
         $mimeType = $file->getMimeType();
 
         return [

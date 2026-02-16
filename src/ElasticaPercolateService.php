@@ -24,7 +24,7 @@ class ElasticaPercolateService extends ElasticaService
     public function __construct(
         Client $client,
         $indexName,
-        LoggerInterface $logger = null,
+        LoggerInterface $logger,
         $indexingMemory = null,
         $searchableExtensionClassName = Searchable::class,
         $doctypeToPercolate = null

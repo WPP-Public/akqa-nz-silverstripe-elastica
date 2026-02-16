@@ -8,8 +8,6 @@ SilverStripe\Core\Injector\Injector:
   Heyday\Elastica\Searchable:
     constructor:
       - '%$Heyday\Elastica\ElasticaService'
-  ManyManyList:
-    class: Heyday\Elastica\ManyManyList
 
 Symbiote\QueuedJobs\Jobs\CleanupJob:
   is_enabled: true

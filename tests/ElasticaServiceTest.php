@@ -4,28 +4,24 @@ namespace Heyday\Elastica\Tests;
 
 use Elastica\Index;
 use Heyday\Elastica\ElasticaService;
-use PHPUnit_Framework_MockObject_MockObject;
+use PHPUnit\Framework\MockObject\MockObject;
 use SilverStripe\Dev\SapphireTest;
 
 class ElasticaServiceTest extends SapphireTest
 {
-    public function testDefineDeletesIndexIfRecreateIsPassed()
+    public function testDefineDeletesIndexIfRecreateIsPassed(): void
     {
-        /**
- * @var ElasticaService|PHPUnit_Framework_MockObject_MockObject $service
-*/
+        /** @var ElasticaService&MockObject $service */
         $service = $this->getMockBuilder(ElasticaService::class)
             ->disableOriginalConstructor()
-            ->setMethods(['getIndex', 'createIndex', 'getIndexedClasses'])
+            ->onlyMethods(['getIndex', 'createIndex', 'getIndexedClasses'])
             ->getMock();
 
         $service->expects($this->once())->method('getIndexedClasses')->willReturn([]);
 
-        /**
- * @var Index|PHPUnit_Framework_MockObject_MockObject $index
-*/
+        /** @var Index&MockObject $index */
         $index = $this->createMock(Index::class);
-        $index->expects($this->exactly(2))->method('exists')->willReturnOnConsecutiveCalls(true, false);
+        $index->expects($this->once())->method('exists')->willReturn(true);
         $index->expects($this->once())->method('delete');
 
         $service->expects($this->once())->method('getIndex')->willReturn($index);

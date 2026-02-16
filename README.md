@@ -18,10 +18,8 @@ This module supercedes [Symbiote's Elastica Module](https://github.com/symbiote-
 
 ## Compatibility
 
-This release should be compatible with all ElasticSearch 7.0 and above versions. May work with elasticsearch 6.
-This release requires SilverStripe 4.x
-
-If you need to work with an earlier version of elasticsearch (2.x) and SS (3.x), please try the 1.0 release of this module
+This release should be compatible with all ElasticSearch 9.0 and above versions.
+This release requires SilverStripe 6.x
 
 ## Installation
 
@@ -57,8 +55,8 @@ Only:
 SilverStripe\Core\Injector\Injector:
   Elastica\Client:
     constructor:
-      - host: localhost # hostname of the elastic search server
-        port: 9200 # port number of the elastic search server
+    - hosts:
+        - "`ELASTIC_URL`" # Define Elastic hosts e.g. https://HOST_NAME:PORT
 
   Heyday\Elastica\ElasticaService:
     constructor:
