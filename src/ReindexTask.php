@@ -56,7 +56,12 @@ class ReindexTask extends BuildTask
     public function getOptions(): array
     {
         return [
-            new InputOption('recreate', null, InputOption::VALUE_NONE, 'Delete and recreate the index before reindexing'),
+            new InputOption(
+                'recreate',
+                null,
+                InputOption::VALUE_NONE,
+                'Delete and recreate the index before reindexing'
+            ),
         ];
     }
 }

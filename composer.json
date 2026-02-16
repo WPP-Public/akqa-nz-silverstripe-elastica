@@ -43,5 +43,10 @@
             "php-http/discovery": true,
             "silverstripe/vendor-plugin": true
         }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "lint": "vendor/bin/phpcs src/",
+        "lint:fix": "vendor/bin/phpcbf src/"
     }
 }

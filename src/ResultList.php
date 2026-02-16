@@ -251,7 +251,7 @@ class ResultList extends ModelData implements SS_List
                         continue;
                     }
 
-                    $ids = array_map(function($documentId) {
+                    $ids = array_map(function ($documentId) {
                         $parts = preg_split('/_/', $documentId);
 
                         return end($parts);
