@@ -15,6 +15,7 @@
     },
     "require": {
         "php": ">=8.4",
+        "silverstripe/framework": "^6",
         "ruflin/elastica": "^9",
         "elasticsearch/elasticsearch": "^9",
         "symbiote/silverstripe-queuedjobs": "*"
