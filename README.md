@@ -55,8 +55,8 @@ Only:
 SilverStripe\Core\Injector\Injector:
   Elastica\Client:
     constructor:
-      - host: localhost # hostname of the elastic search server
-        port: 9200 # port number of the elastic search server
+    - hosts:
+        - "`ELASTIC_URL`" # Define Elastic hosts e.g. https://HOST_NAME:PORT
 
   Heyday\Elastica\ElasticaService:
     constructor:
