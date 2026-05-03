@@ -221,8 +221,9 @@ class ResultList extends ModelData implements SS_List
                       : false;
 
                     if (empty($type)) {
-                        Injector::inst()->get(LoggerInterface::class)
-                            ->warn('no type field found on result: '. $item->getId());
+                        Injector::inst()->get(LoggerInterface::class)->error(
+                            'No type field found on result: '. $item->getId()
+                        );
 
                         continue;
                     }
