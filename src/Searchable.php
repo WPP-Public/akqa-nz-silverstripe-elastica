@@ -350,7 +350,8 @@ class Searchable extends Extension
 
     /**
      * Get values for all searchable fields as an array.
-     * Similr to getSearchableFields() but returns field values instead of spec
+     *
+     * Similar to getSearchableFields() but returns field values instead of specs.
      *
      * @return array
      */
@@ -724,6 +725,49 @@ class Searchable extends Extension
         return boolval($fieldValue);
     }
 
+
+    protected function formatText($fieldValue): string
+    {
+        // strip all <script> tags out of the field value
+        $fieldValue = preg_replace('/<script.*?<\/script>/s', '', (string) $fieldValue);
+        return (string) $fieldValue;
+    }
+
+
+    /**
+     * Strip all <script> tags out of the HTML going into the index
+     *
+     * @param string $html
+     * @return string
+     */
+    protected function stripScriptTags(string $html): string
+    {
+        libxml_use_internal_errors(true);
+
+        try {
+            $dom = new DOMDocument();
+
+            // Ensure proper encoding handling
+            $dom->loadHTML('<?xml encoding="utf-8" ?>' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+            $scripts = $dom->getElementsByTagName('script');
+
+            // Because this is a live NodeList, iterate backwards
+            for ($i = $scripts->length - 1; $i >= 0; $i--) {
+                $script = $scripts->item($i);
+                $script->parentNode->removeChild($script);
+            }
+
+            $result = $dom->saveHTML();
+        } catch (Exception $e) {
+            $result = $html;
+        }
+
+        libxml_clear_errors();
+
+        return $result;
+    }
+
     /**
      * Format a scalar value for the index document
      * Note: Respects array values
@@ -745,6 +789,7 @@ class Searchable extends Extension
         }
 
         $type = isset($params['type']) ? $params['type'] : null;
+
         switch ($type) {
             case 'boolean':
                 return $this->formatBoolean($fieldValue);
@@ -754,10 +799,13 @@ class Searchable extends Extension
                 return $this->formatInt($fieldValue);
             case 'float':
                 return $this->formatFloat($fieldValue);
+            case 'text':
+                return $this->formatText($fieldValue);
             default:
                 return $fieldValue;
         }
     }
+
 
     /**
      * Get extra params for a field from the parent document
